@@ -283,7 +283,11 @@ class Orchestrator:
         return summary
 
     async def _update_agent_memories(self):
-        for agent in self.session.active_agents:
+        """
+        Guncelleme islemlerini paralel yaparak zaman kazanıyoruz.
+        O(N_ajan * gecikme) yerine O(gecikme) sürede tamamlanıyor.
+        """
+        async def update_single_agent(agent: Agent):
             current_memory = self.memory.get_agent_memory(agent.id)
             recent = self.memory.history[-5:]
             messages_text = "\n".join(
@@ -305,6 +309,10 @@ class Orchestrator:
                 self.memory.update_agent_memory(agent.id, result.content)
             except Exception:
                 pass
+
+        tasks = [update_single_agent(agent) for agent in self.session.active_agents]
+        if tasks:
+            await asyncio.gather(*tasks)
 
     @property
     def summaries(self) -> list[Summary]:
