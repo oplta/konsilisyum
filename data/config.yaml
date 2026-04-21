@@ -1,0 +1,57 @@
+llm:
+  max_tokens: 300
+  temperature: 0.7
+
+api_keys:
+  - id: "key-01"
+    key: "${MISTRAL_KEY_01}"
+    assigned: "Atlas"
+  - id: "key-02"
+    key: "${MISTRAL_KEY_02}"
+    assigned: "Mira"
+  - id: "key-03"
+    key: "${MISTRAL_KEY_03}"
+    assigned: "Kaan"
+  - id: "pool-01"
+    key: "${MISTRAL_POOL_01}"
+    pool: true
+
+agents:
+  - name: "Atlas"
+    role: "Stratejist"
+    goal: "Fikirleri uygulanabilir eylem planina cevirmek"
+    blind_spot: "Insan maliyetini kucumseme egilimi"
+    style: "Kisa, net, karar odakli"
+    trigger: "Belirsizlik gorunce cerceve kurar"
+    color: "#ff6b6b"
+
+  - name: "Mira"
+    role: "Etikci"
+    goal: "Insan etkisini ve uzun vadeli riskleri sorgulamak"
+    blind_spot: "Asiri temkinlilik"
+    style: "Sakin, analitik, uyariji"
+    trigger: "Guc asimetrisi gorunce itiraz eder"
+    color: "#4ecdc4"
+
+  - name: "Kaan"
+    role: "Supheci"
+    goal: "Bos varsayimlari ve romantik fikirleri delmek"
+    blind_spot: "Yapici olmadan elestirmek"
+    style: "Sert, kisa, meydan okuyan"
+    trigger: "Kanitsiz iddia gorunce baski kurar"
+    color: "#ffe66d"
+
+memory:
+  context_window_size: 8
+  summary_interval: 20
+  memory_update_interval: 5
+  max_agent_memory_items: 20
+
+orchestrator:
+  turn_delay: 2.0
+  max_auto_turns: 50
+  repetition_threshold: 0.7
+
+session:
+  auto_save_interval: 5
+  sessions_dir: "data/sessions"
