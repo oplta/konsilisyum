@@ -54,6 +54,11 @@ class KeyPool:
         key = self.keys.get(key_id)
         if not key:
             return
+
+        # Sanitize error: mask the actual key if it appears in the error message
+        if key.key in error:
+            error = error.replace(key.key, f"{key.key[:4]}...{key.key[-4:]}")
+
         key.last_error = error
         key.error_count += 1
         if "rate_limited" in error:
