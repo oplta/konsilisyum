@@ -12,8 +12,14 @@ class SessionManager:
         self.sessions_dir = Path(sessions_dir)
         self.sessions_dir.mkdir(parents=True, exist_ok=True)
 
+    def _safe_path(self, session_id: str, extension: str) -> Path:
+        # Prevent directory traversal
+        if ".." in session_id or "/" in session_id or "\\" in session_id:
+            raise ValueError(f"Gecersiz oturum ID: {session_id}")
+        return self.sessions_dir / f"{session_id}{extension}"
+
     def save(self, session: Session):
-        meta_path = self.sessions_dir / f"{session.id}.json"
+        meta_path = self._safe_path(session.id, ".json")
         meta = session.to_meta_dict()
         meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2))
 
@@ -25,14 +31,14 @@ class SessionManager:
                     msg._saved = True
 
     def load(self, session_id: str) -> Session:
-        meta_path = self.sessions_dir / f"{session_id}.json"
+        meta_path = self._safe_path(session_id, ".json")
         if not meta_path.exists():
             raise FileNotFoundError(f"Oturum bulunamadi: {session_id}")
 
         meta = json.loads(meta_path.read_text())
 
         messages = []
-        messages_path = self.sessions_dir / f"{session_id}.jsonl"
+        messages_path = self._safe_path(session_id, ".jsonl")
         if messages_path.exists():
             for line in messages_path.read_text(encoding="utf-8").strip().split("\n"):
                 if line.strip():

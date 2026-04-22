@@ -155,7 +155,7 @@ class Topic:
 @dataclass
 class APIKey:
     id: str
-    key: str
+    key: str = field(repr=False)
     assigned_agent: str | None = None
     is_pool: bool = False
     usage_count: int = 0
@@ -166,10 +166,16 @@ class APIKey:
     rate_limited_until: datetime | None = None
     status: KeyStatus = KeyStatus.ACTIVE
 
-    def to_dict(self) -> dict:
+    def to_dict(self, mask: bool = True) -> dict:
+        key_val = self.key
+        if mask and len(key_val) > 8:
+            key_val = f"{key_val[:4]}...{key_val[-4:]}"
+        elif mask:
+            key_val = "***"
+
         return {
             "id": self.id,
-            "key": self.key,
+            "key": key_val,
             "assigned_agent": self.assigned_agent,
             "is_pool": self.is_pool,
             "usage_count": self.usage_count,
