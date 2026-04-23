@@ -50,14 +50,21 @@ class KeyPool:
             key.token_count += tokens
             key.last_used = datetime.now()
 
+    def mask_secrets(self, text: str) -> str:
+        """Masks any known API keys in the given text."""
+        for key_obj in self.keys.values():
+            if key_obj.key in text:
+                masked = f"{key_obj.key[:4]}...{key_obj.key[-4:]}"
+                text = text.replace(key_obj.key, masked)
+        return text
+
     def report_error(self, key_id: str, error: str, retry_after: int | None = None):
         key = self.keys.get(key_id)
         if not key:
             return
 
-        # Sanitize error: mask the actual key if it appears in the error message
-        if key.key in error:
-            error = error.replace(key.key, f"{key.key[:4]}...{key.key[-4:]}")
+        # Sanitize error: mask any known keys that might appear in the error message
+        error = self.mask_secrets(error)
 
         key.last_error = error
         key.error_count += 1
