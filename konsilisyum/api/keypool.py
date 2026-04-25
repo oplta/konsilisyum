@@ -55,9 +55,8 @@ class KeyPool:
         if not key:
             return
 
-        # Sanitize error: mask the actual key if it appears in the error message
-        if key.key in error:
-            error = error.replace(key.key, f"{key.key[:4]}...{key.key[-4:]}")
+        # Sanitize error: mask any managed API keys if they appear in the error message
+        error = self.mask_secrets(error)
 
         key.last_error = error
         key.error_count += 1
@@ -69,6 +68,16 @@ class KeyPool:
             key.status = KeyStatus.EXHAUSTED
         if key.error_count > 10:
             key.status = KeyStatus.ERROR
+
+    def mask_secrets(self, text: str) -> str:
+        """Masks all managed API keys in the given text with a 4+4 strategy."""
+        if not text:
+            return text
+        for key_obj in self.keys.values():
+            if key_obj.key and key_obj.key in text:
+                masked = f"{key_obj.key[:4]}...{key_obj.key[-4:]}"
+                text = text.replace(key_obj.key, masked)
+        return text
 
     def health(self) -> dict:
         active = sum(1 for k in self.keys.values() if self._is_available(k))
