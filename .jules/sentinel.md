@@ -2,3 +2,8 @@
 **Vulnerability:** Mistral API keys were being leaked in the `last_error` field of `APIKey` objects when `KeyPool.report_error` was called with error messages containing the full key.
 **Learning:** Error messages from LLM providers or internal logs often contain the very secrets they are reporting issues about. Simply masking the key in `repr` is not enough if the key is then echoed into another field like `last_error`.
 **Prevention:** Always sanitize error messages that might contain sensitive inputs before storing or logging them.
+
+## 2025-05-15 - [Centralized Secret Masking for Error Handling]
+**Vulnerability:** API keys could still be leaked through the `Orchestrator` exception handler or if a message contained a key other than the one currently being reported in `KeyPool.report_error`.
+**Learning:** Per-secret sanitization is brittle. If you have a pool of secrets, any one of them could appear in any error message.
+**Prevention:** Implement a centralized `mask_secrets` method that knows all managed credentials and use it at all exit points where internal error details might be exposed (e.g., CLI output, session metadata, logs).
