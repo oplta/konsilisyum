@@ -203,7 +203,8 @@ class Orchestrator:
             )
         except Exception as e:
             self.pause()
-            return TurnResult(error=str(e))
+            # Prevent credential leakage by masking secrets in the exception message
+            return TurnResult(error=self.key_pool.mask_secrets(str(e)))
 
         content = result.content
 
