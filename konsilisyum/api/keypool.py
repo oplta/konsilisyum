@@ -10,6 +10,21 @@ class KeyPool:
         self.keys: dict[str, APIKey] = {k.id: k for k in keys}
         self._rr_index = 0
 
+    def mask_secrets(self, text: str) -> str:
+        """Metin icindeki tum API anahtarlarini maskeler."""
+        if not text:
+            return text
+        for key_obj in self.keys.values():
+            if not key_obj.key:
+                continue
+
+            mask = "***"
+            if len(key_obj.key) > 8:
+                mask = f"{key_obj.key[:4]}...{key_obj.key[-4:]}"
+
+            text = text.replace(key_obj.key, mask)
+        return text
+
     def get_key(self, agent: Agent | None = None) -> APIKey:
         if agent and agent.api_key_id:
             key = self.keys.get(agent.api_key_id)
@@ -55,9 +70,8 @@ class KeyPool:
         if not key:
             return
 
-        # Sanitize error: mask the actual key if it appears in the error message
-        if key.key in error:
-            error = error.replace(key.key, f"{key.key[:4]}...{key.key[-4:]}")
+        # Sanitize error: mask any API keys from the pool that might appear in the error message
+        error = self.mask_secrets(error)
 
         key.last_error = error
         key.error_count += 1
