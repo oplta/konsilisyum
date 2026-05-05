@@ -50,14 +50,26 @@ class KeyPool:
             key.token_count += tokens
             key.last_used = datetime.now()
 
+    def mask_secrets(self, text: str) -> str:
+        """Centralized secret masking for all keys in the pool."""
+        if not text:
+            return text
+
+        for key_obj in self.keys.values():
+            if not key_obj.key:
+                continue
+            if key_obj.key in text:
+                mask = f"{key_obj.key[:4]}...{key_obj.key[-4:]}" if len(key_obj.key) > 8 else "***"
+                text = text.replace(key_obj.key, mask)
+        return text
+
     def report_error(self, key_id: str, error: str, retry_after: int | None = None):
         key = self.keys.get(key_id)
         if not key:
             return
 
-        # Sanitize error: mask the actual key if it appears in the error message
-        if key.key in error:
-            error = error.replace(key.key, f"{key.key[:4]}...{key.key[-4:]}")
+        # Sanitize error: mask any managed keys that appear in the error message
+        error = self.mask_secrets(error)
 
         key.last_error = error
         key.error_count += 1
