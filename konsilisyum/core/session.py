@@ -23,7 +23,7 @@ class SessionManager:
         meta = session.to_meta_dict()
         meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2))
 
-        messages_path = self.sessions_dir / f"{session.id}.jsonl"
+        messages_path = self._safe_path(session.id, ".jsonl")
         with open(messages_path, "a", encoding="utf-8") as f:
             for msg in session.messages:
                 if not msg._saved:
