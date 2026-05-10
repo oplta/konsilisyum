@@ -55,9 +55,8 @@ class KeyPool:
         if not key:
             return
 
-        # Sanitize error: mask the actual key if it appears in the error message
-        if key.key in error:
-            error = error.replace(key.key, f"{key.key[:4]}...{key.key[-4:]}")
+        # Sanitize error: mask any managed keys if they appear in the error message
+        error = self.mask_secrets(error)
 
         key.last_error = error
         key.error_count += 1
@@ -82,3 +81,21 @@ class KeyPool:
     def get_raw_key(self, agent: Agent | None = None) -> str:
         key = self.get_key(agent)
         return key.key
+
+    def mask_secrets(self, text: str) -> str:
+        if not text:
+            return text
+
+        masked_text = text
+        for key_obj in self.keys.values():
+            if not key_obj.key:
+                continue
+
+            if key_obj.key in masked_text:
+                if len(key_obj.key) > 8:
+                    mask = f"{key_obj.key[:4]}...{key_obj.key[-4:]}"
+                else:
+                    mask = "***"
+                masked_text = masked_text.replace(key_obj.key, mask)
+
+        return masked_text

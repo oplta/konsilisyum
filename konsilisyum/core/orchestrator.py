@@ -203,7 +203,9 @@ class Orchestrator:
             )
         except Exception as e:
             self.pause()
-            return TurnResult(error=str(e))
+            # Redact sensitive information (like API keys) from the error message
+            masked_error = self.key_pool.mask_secrets(str(e))
+            return TurnResult(error=masked_error)
 
         content = result.content
 
