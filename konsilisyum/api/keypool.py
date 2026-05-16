@@ -50,14 +50,44 @@ class KeyPool:
             key.token_count += tokens
             key.last_used = datetime.now()
 
+    def mask_secrets(self, text: str) -> str:
+        """
+        Masks all API keys found in the given text.
+        Keys are sorted by length descending to ensure longer keys are masked before
+        their substrings.
+        """
+        if not text:
+            return text
+
+        # Sort keys by length descending to prevent partial masking of shorter keys
+        # that might be substrings of longer keys.
+        sorted_keys = sorted(
+            self.keys.values(),
+            key=lambda k: len(k.key) if k.key else 0,
+            reverse=True
+        )
+
+        masked_text = text
+        for key_obj in sorted_keys:
+            if not key_obj.key:
+                continue
+
+            if key_obj.key in masked_text:
+                if len(key_obj.key) > 8:
+                    mask = f"{key_obj.key[:4]}...{key_obj.key[-4:]}"
+                else:
+                    mask = "***"
+                masked_text = masked_text.replace(key_obj.key, mask)
+
+        return masked_text
+
     def report_error(self, key_id: str, error: str, retry_after: int | None = None):
         key = self.keys.get(key_id)
         if not key:
             return
 
-        # Sanitize error: mask the actual key if it appears in the error message
-        if key.key in error:
-            error = error.replace(key.key, f"{key.key[:4]}...{key.key[-4:]}")
+        # Sanitize error: mask any API keys from the pool that appear in the error message
+        error = self.mask_secrets(error)
 
         key.last_error = error
         key.error_count += 1
