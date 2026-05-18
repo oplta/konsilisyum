@@ -50,14 +50,35 @@ class KeyPool:
             key.token_count += tokens
             key.last_used = datetime.now()
 
+    def mask_secrets(self, text: str) -> str:
+        if not text:
+            return text
+
+        # Sort keys by length descending to avoid partial matches
+        sorted_keys = sorted(
+            [k.key for k in self.keys.values() if k.key],
+            key=len,
+            reverse=True
+        )
+
+        masked_text = text
+        for key_val in sorted_keys:
+            if key_val in masked_text:
+                if len(key_val) > 8:
+                    mask = f"{key_val[:4]}...{key_val[-4:]}"
+                else:
+                    mask = "***"
+                masked_text = masked_text.replace(key_val, mask)
+
+        return masked_text
+
     def report_error(self, key_id: str, error: str, retry_after: int | None = None):
         key = self.keys.get(key_id)
         if not key:
             return
 
-        # Sanitize error: mask the actual key if it appears in the error message
-        if key.key in error:
-            error = error.replace(key.key, f"{key.key[:4]}...{key.key[-4:]}")
+        # Sanitize error: mask any known secrets
+        error = self.mask_secrets(error)
 
         key.last_error = error
         key.error_count += 1
