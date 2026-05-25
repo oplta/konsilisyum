@@ -193,6 +193,22 @@ class TestKeyPool:
         assert h["total"] == 2
         assert h["error"] == 1
 
+    def test_mask_secrets(self):
+        key1 = "sk-sensitive-123456789"
+        key2 = "shortkey"
+        pool = KeyPool([
+            APIKey(id="k1", key=key1),
+            APIKey(id="k2", key=key2),
+        ])
+
+        text = f"Error: {key1} failed, also {key2} leaked."
+        masked = pool.mask_secrets(text)
+
+        assert key1 not in masked
+        assert key2 not in masked
+        assert "sk-s...6789" in masked
+        assert "***" in masked
+
 
 class TestSession:
     def test_active_agents(self):
