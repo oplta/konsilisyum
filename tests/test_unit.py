@@ -193,6 +193,21 @@ class TestKeyPool:
         assert h["total"] == 2
         assert h["error"] == 1
 
+    def test_mask_secrets(self):
+        pool = KeyPool([
+            APIKey(id="k1", key="sk-long-secret-key-12345"),
+            APIKey(id="k2", key="shorty"),
+        ])
+
+        text = "Error with sk-long-secret-key-12345 and also shorty key."
+        masked = pool.mask_secrets(text)
+
+        assert "sk-long-secret-key-12345" not in masked
+        assert "sk-l...2345" in masked
+        assert "shorty" not in masked
+        assert "***" in masked
+        assert masked == "Error with sk-l...2345 and also *** key."
+
 
 class TestSession:
     def test_active_agents(self):
