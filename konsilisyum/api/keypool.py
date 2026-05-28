@@ -55,9 +55,8 @@ class KeyPool:
         if not key:
             return
 
-        # Sanitize error: mask the actual key if it appears in the error message
-        if key.key in error:
-            error = error.replace(key.key, f"{key.key[:4]}...{key.key[-4:]}")
+        # Sanitize error: mask any managed keys if they appear in the error message
+        error = self.mask_secrets(error)
 
         key.last_error = error
         key.error_count += 1
@@ -78,6 +77,31 @@ class KeyPool:
             "error": sum(1 for k in self.keys.values() if k.status == KeyStatus.ERROR),
             "exhausted": sum(1 for k in self.keys.values() if k.status == KeyStatus.EXHAUSTED),
         }
+
+    def mask_secrets(self, text: str) -> str:
+        """
+        Redacts all managed API keys from the given text.
+        Longer keys are replaced first to prevent partial masking.
+        """
+        if not text:
+            return text
+
+        # Sort keys by length descending to match longer ones first
+        sorted_keys = sorted(self.keys.values(), key=lambda k: len(k.key), reverse=True)
+
+        for key_obj in sorted_keys:
+            if not key_obj.key:
+                continue
+
+            # Masking strategy: 4+4 for long keys, *** for short ones
+            if len(key_obj.key) > 8:
+                masked = f"{key_obj.key[:4]}...{key_obj.key[-4:]}"
+            else:
+                masked = "***"
+
+            text = text.replace(key_obj.key, masked)
+
+        return text
 
     def get_raw_key(self, agent: Agent | None = None) -> str:
         key = self.get_key(agent)
