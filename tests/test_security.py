@@ -1,10 +1,15 @@
 import pytest
 import os
 import shutil
+import asyncio
 from pathlib import Path
+from unittest.mock import MagicMock, AsyncMock
 from konsilisyum.api.keypool import KeyPool
-from konsilisyum.core.models import APIKey, Session
+from konsilisyum.core.models import APIKey, Session, Agent
 from konsilisyum.core.session import SessionManager
+from konsilisyum.core.memory import MemoryManager
+from konsilisyum.core.orchestrator import Orchestrator
+
 
 class TestSecurity:
     def test_mask_secrets_logic(self):
@@ -68,3 +73,46 @@ class TestSecurity:
         key = pool.keys["k1"]
         assert "sk-s...-999" in key.last_error
         assert "sk-secret-key-999" not in key.last_error
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_masks_key_in_error():
+    # Setup
+    key_val = "sk-secret-123456789"
+    api_key = APIKey(id="k1", key=key_val, is_pool=True)
+    agent = Agent(name="Atlas", role="R", goal="G", blind_spot="B", style="S", trigger="T", api_key_id="k1")
+    session = Session(agents=[agent])
+    memory = MemoryManager()
+
+    key_pool = KeyPool([api_key])
+
+    api_client = MagicMock()
+    # Simulate an error that contains the key
+    api_client.complete_with_retry = AsyncMock(side_effect=Exception(f"Invalid key: {key_val}"))
+
+    orchestrator = Orchestrator(session, memory, api_client, key_pool)
+
+    # Execute
+    result = await orchestrator.execute_turn()
+
+    # Verify
+    assert key_val not in result.error
+    assert "sk-s...6789" in result.error
+
+
+def test_keypool_mask_secrets_ordering():
+    # Test that longer keys are masked first
+    key1 = "secret_long"
+    key2 = "secret"
+    pool = KeyPool([
+        APIKey(id="k1", key=key1),
+        APIKey(id="k2", key=key2)
+    ])
+
+    text = f"My keys are {key1} and {key2}"
+    masked = pool.mask_secrets(text)
+
+    assert key1 not in masked
+    assert key2 not in masked
+    assert "secr...long" in masked
+    assert "***" in masked
