@@ -2,6 +2,7 @@
 name = "konsilisyum"
 version = "0.1.0"
 description = "Terminal tabanli yasayan fikir meclisi"
+license = {text = "MIT"}
 requires-python = ">=3.11"
 dependencies = [
     "httpx>=0.25.0",

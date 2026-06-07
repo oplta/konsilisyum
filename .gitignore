@@ -9,6 +9,8 @@ __pycache__/
 dist/
 build/
 .eggs/
+.venv/
+venv/
 
 # Oturum kayitlari
 data/sessions/*.jsonl
