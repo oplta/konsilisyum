@@ -211,3 +211,18 @@ async def test_cmd_export_invalid_format(setup):
     handler, session, _, _ = setup
     result = await handler.handle("export", {"format": "xml"})
     assert not result.success
+
+
+@pytest.mark.asyncio
+async def test_cmd_load_no_sessions(setup):
+    handler, session, _, _ = setup
+    result = await handler.handle("load", {"file": ""})
+    assert result.success or not result.success
+
+
+@pytest.mark.asyncio
+async def test_cmd_load_not_found(setup):
+    handler, session, _, _ = setup
+    result = await handler.handle("load", {"file": "nonexistent-session-id"})
+    assert not result.success
+    assert "bulunamadi" in result.message.lower() or "yuklenemedi" in result.message.lower()

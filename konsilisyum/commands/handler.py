@@ -279,7 +279,32 @@ class CommandHandler:
         return CommandResult(True, "Oturum kaydedildi (otomatik kayit aktif)")
 
     async def cmd_load(self, file: str = "") -> CommandResult:
-        return CommandResult(False, "Oturum yukleme henuz uygulanmadi (Faz 2)")
+        if not file:
+            sessions = self.session_manager.list_sessions()
+            if not sessions:
+                return CommandResult(False, "Kayitli oturum yok.")
+            lines = ["Kayitli oturumlar:"]
+            for s in sessions[:10]:
+                lines.append(f"  {s['id'][:8]}... | {s.get('name', '')} | Tur: {s.get('turn_count', 0)} | {s.get('created_at', '')[:16]}")
+            lines.append("\nKullanim: /load <oturum_id>")
+            return CommandResult(True, "\n".join(lines))
+        try:
+            loaded = self.session_manager.load(file)
+        except FileNotFoundError as e:
+            return CommandResult(False, str(e))
+        except Exception as e:
+            return CommandResult(False, f"Oturum yuklenemedi: {e}")
+        self.session.agents = loaded.agents
+        self.session.messages = loaded.messages
+        self.session.topics = loaded.topics
+        self.session.current_topic = loaded.current_topic
+        self.session.current_turn = loaded.current_turn
+        self.session.user_role = loaded.user_role
+        self.session.auto_turns_since_user = loaded.auto_turns_since_user
+        self.session.name = loaded.name
+        for msg in loaded.messages:
+            self.memory.add_message(msg)
+        return CommandResult(True, f"Oturum yuklendi: {loaded.name} (Tur: {loaded.current_turn})")
 
     async def cmd_keys(self) -> CommandResult:
         health = self.key_pool.health()
