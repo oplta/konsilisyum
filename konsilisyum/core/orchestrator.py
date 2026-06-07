@@ -212,6 +212,10 @@ class Orchestrator:
             agent.last_turn = self.session.current_turn
             return TurnResult(message=None, is_pas=True)
 
+        if self.memory.detect_repetition(content):
+            agent.last_turn = self.session.current_turn
+            return TurnResult(message=None, is_pas=True, error="tekrar_tespit")
+
         if len(content.split()) > 500:
             content = " ".join(content.split()[:500]) + " [...kesildi]"
 
