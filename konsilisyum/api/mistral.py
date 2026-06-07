@@ -5,6 +5,8 @@ from dataclasses import dataclass
 
 import httpx
 
+from konsilisyum.core.errors import AuthError, RateLimitError, ServerError
+
 
 @dataclass
 class CompletionResult:
@@ -12,20 +14,6 @@ class CompletionResult:
     tokens_in: int
     tokens_out: int
     model: str
-
-
-class RateLimitError(Exception):
-    def __init__(self, message: str, retry_after: int | None = None):
-        super().__init__(message)
-        self.retry_after = retry_after
-
-
-class AuthError(Exception):
-    pass
-
-
-class ServerError(Exception):
-    pass
 
 
 class MistralClient:

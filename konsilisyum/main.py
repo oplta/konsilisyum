@@ -25,6 +25,7 @@ from konsilisyum.core.models import (
     SpeakerType,
     Topic,
 )
+from konsilisyum.core.errors import AllKeysExhaustedError, NoActiveAgentError
 from konsilisyum.core.orchestrator import Orchestrator
 from konsilisyum.core.session import SessionManager
 
@@ -220,6 +221,14 @@ class KonsilisyumApp:
 
             try:
                 result = await self.orchestrator.execute_turn()
+            except NoActiveAgentError:
+                console.print("[bold red]Aktif ajan kalmadi. /spawn ile ajan ekleyin.[/bold red]")
+                self.orchestrator.pause()
+                continue
+            except AllKeysExhaustedError:
+                console.print("[bold red]Tüm API anahtarlari tukendi. /keys ile kontrol edin.[/bold red]")
+                self.orchestrator.pause()
+                continue
             except RuntimeError as e:
                 console.print(f"[bold red]Hata: {e}[/bold red]")
                 self.orchestrator.pause()

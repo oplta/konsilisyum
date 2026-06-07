@@ -181,7 +181,8 @@ class TestKeyPool:
         pool = KeyPool([
             APIKey(id="k1", key="key1", is_pool=True, status=KeyStatus.EXHAUSTED),
         ])
-        with pytest.raises(RuntimeError):
+        from konsilisyum.core.errors import AllKeysExhaustedError
+        with pytest.raises(AllKeysExhaustedError):
             pool.get_key()
 
     def test_health(self):
