@@ -1,0 +1,38 @@
+Screen {
+    layout: vertical;
+}
+
+#sidebar {
+    width: 30;
+    height: 100%;
+    border-left: solid $primary;
+}
+
+#messages {
+    height: 1fr;
+    border: solid $primary;
+}
+
+#agents {
+    height: auto;
+    max-height: 40%;
+    border-bottom: solid $primary;
+    padding: 1;
+}
+
+#topic {
+    height: auto;
+    max-height: 20%;
+    border-bottom: solid $primary;
+    padding: 1;
+}
+
+#stats {
+    height: auto;
+    padding: 1;
+}
+
+#input {
+    dock: bottom;
+    height: 3;
+}
