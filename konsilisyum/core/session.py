@@ -80,7 +80,16 @@ class SessionManager:
                 continue
         return sorted(sessions, key=lambda s: s.get("created_at", ""), reverse=True)
 
-    def export_markdown(self, session: Session) -> str:
+    def export(self, session: Session, fmt: str = "md") -> str:
+        if fmt == "md":
+            return self._export_markdown(session)
+        elif fmt == "jsonl":
+            return self._export_jsonl(session)
+        elif fmt == "txt":
+            return self._export_text(session)
+        raise ValueError(f"Desteklenmeyen format: {fmt}")
+
+    def _export_markdown(self, session: Session) -> str:
         topic = session.current_topic.content if session.current_topic else "Belirtilmedi"
         lines = [
             f"# {session.name}",
@@ -96,6 +105,32 @@ class SessionManager:
                 lines.append(f"### Ozet (Tur {msg.turn})")
             else:
                 lines.append(f"**[{msg.speaker}]** (Tur {msg.turn}):")
+            lines.append(msg.content)
+            lines.append("")
+        return "\n".join(lines)
+
+    def _export_jsonl(self, session: Session) -> str:
+        import json
+        lines = []
+        for msg in session.messages:
+            lines.append(json.dumps(msg.to_dict(), ensure_ascii=False))
+        return "\n".join(lines)
+
+    def _export_text(self, session: Session) -> str:
+        topic = session.current_topic.content if session.current_topic else "Belirtilmedi"
+        lines = [
+            session.name,
+            f"Konu: {topic}",
+            f"Tarih: {session.created_at:%Y-%m-%d %H:%M}",
+            f"Tur Sayisi: {session.current_turn}",
+            "=" * 60,
+            "",
+        ]
+        for msg in session.messages:
+            if msg.is_summary:
+                lines.append(f"--- OZET (Tur {msg.turn}) ---")
+            else:
+                lines.append(f"[{msg.timestamp:%H:%M:%S}] {msg.speaker}:")
             lines.append(msg.content)
             lines.append("")
         return "\n".join(lines)
