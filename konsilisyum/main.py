@@ -318,10 +318,15 @@ def main():
     parser = argparse.ArgumentParser(description="Konsilisyum - Yasayan Fikir Meclisi")
     parser.add_argument("topic", nargs="?", default=None, help="Tartisma konusu")
     parser.add_argument("--config", default="data/config.yaml", help="Yapilandirma dosyasi")
+    parser.add_argument("--tui", action="store_true", help="Textual TUI kullan")
     args = parser.parse_args()
 
-    app = KonsilisyumApp()
-    app.run(topic=args.topic)
+    if args.tui:
+        from konsilisyum.tui.app import run_tui
+        run_tui(topic=args.topic)
+    else:
+        app = KonsilisyumApp()
+        app.run(topic=args.topic)
 
 
 if __name__ == "__main__":
