@@ -68,6 +68,39 @@ Tartisma:
 
 Ozet:"""
 
+DECISIONS_PROMPT = """Asagidaki tartismadan karar taslaklari cikar.
+
+Konu: {topic}
+
+Tartisma:
+{messages}
+
+Her karar taslagini bir satirda, numaralandirarak yaz. Sadece tartismada ortaya cikan somut onerileri ve kararlari listele.
+
+Karar Taslaklari:"""
+
+ACTIONS_PROMPT = """Asagidaki tartismadan yapilacaklar listesi cikar.
+
+Konu: {topic}
+
+Tartisma:
+{messages}
+
+Her yapilacak isi bir satirda, numaralandirarak yaz. Sadece somut, uygulanabilir adimlari listele.
+
+Yapilacaklar:"""
+
+MAP_PROMPT = """Asagidaki tartismadan karsit gorus haritasi cikar.
+
+Konu: {topic}
+
+Tartisma:
+{messages}
+
+Her gorusu kisa ve net yaz. Hangi ajanin hangi gorusu savundugunu belirt.
+
+Karsit Gorus Haritasi:"""
+
 
 @dataclass
 class TurnResult:
@@ -322,3 +355,60 @@ class Orchestrator:
     @property
     def summaries(self) -> list[Summary]:
         return self.memory.summaries
+
+    async def generate_decisions(self) -> str | None:
+        messages = self.session.messages[-20:]
+        if not messages:
+            return None
+        messages_text = "\n".join(
+            f"[Tur {m.turn}] {m.speaker}: {m.content}" for m in messages if not m.is_summary
+        )
+        topic = self.session.current_topic.content if self.session.current_topic else ""
+        prompt = DECISIONS_PROMPT.format(topic=topic, messages=messages_text)
+        try:
+            result = await self.api_client.complete_with_retry(
+                system_prompt="Sen bir karar cikaricisin. Turkce yanitla.",
+                user_prompt=prompt,
+                get_key=lambda: self.key_pool.get_raw_key(),
+            )
+            return result.content
+        except Exception:
+            return None
+
+    async def generate_actions(self) -> str | None:
+        messages = self.session.messages[-20:]
+        if not messages:
+            return None
+        messages_text = "\n".join(
+            f"[Tur {m.turn}] {m.speaker}: {m.content}" for m in messages if not m.is_summary
+        )
+        topic = self.session.current_topic.content if self.session.current_topic else ""
+        prompt = ACTIONS_PROMPT.format(topic=topic, messages=messages_text)
+        try:
+            result = await self.api_client.complete_with_retry(
+                system_prompt="Sen bir yapilacaklar listesi cikaricisin. Turkce yanitla.",
+                user_prompt=prompt,
+                get_key=lambda: self.key_pool.get_raw_key(),
+            )
+            return result.content
+        except Exception:
+            return None
+
+    async def generate_map(self) -> str | None:
+        messages = self.session.messages[-20:]
+        if not messages:
+            return None
+        messages_text = "\n".join(
+            f"[Tur {m.turn}] {m.speaker}: {m.content}" for m in messages if not m.is_summary
+        )
+        topic = self.session.current_topic.content if self.session.current_topic else ""
+        prompt = MAP_PROMPT.format(topic=topic, messages=messages_text)
+        try:
+            result = await self.api_client.complete_with_retry(
+                system_prompt="Sen bir gorus haritasi cikaricisin. Turkce yanitla.",
+                user_prompt=prompt,
+                get_key=lambda: self.key_pool.get_raw_key(),
+            )
+            return result.content
+        except Exception:
+            return None
