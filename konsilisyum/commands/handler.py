@@ -258,16 +258,22 @@ class CommandHandler:
         return CommandResult(False, "Ozet olusturulamadi.")
 
     async def cmd_decisions(self) -> CommandResult:
-        messages = [m for m in self.session.messages if m.speaker_type == SpeakerType.AGENT]
-        if not messages:
-            return CommandResult(True, "Henuz yeterli tartisma yok.")
-        return CommandResult(True, "Karar taslaklari henüz uygulanmadi (Faz 3)")
+        result = await self.orchestrator.generate_decisions()
+        if result:
+            return CommandResult(True, result)
+        return CommandResult(False, "Karar taslaklari olusturulamadi.")
 
     async def cmd_actions(self) -> CommandResult:
-        return CommandResult(True, "Yapilacaklar listesi henuz uygulanmadi (Faz 3)")
+        result = await self.orchestrator.generate_actions()
+        if result:
+            return CommandResult(True, result)
+        return CommandResult(False, "Yapilacaklar listesi olusturulamadi.")
 
     async def cmd_map(self) -> CommandResult:
-        return CommandResult(True, "Karsit gorus haritasi henuz uygulanmadi (Faz 3)")
+        result = await self.orchestrator.generate_map()
+        if result:
+            return CommandResult(True, result)
+        return CommandResult(False, "Karsit gorus haritasi olusturulamadi.")
 
     async def cmd_export(self, format: str = "md") -> CommandResult:
         try:
