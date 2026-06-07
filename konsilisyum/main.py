@@ -5,20 +5,18 @@ import sys
 import threading
 
 from rich.console import Console
-from rich.live import Live
-from rich.markdown import Markdown
 from rich.panel import Panel
-from rich.text import Text
 
 from konsilisyum.api.keypool import KeyPool
 from konsilisyum.commands.handler import CommandHandler
 from konsilisyum.commands.parser import InputType, parse_input
 from konsilisyum.config.settings import Config
+from konsilisyum.core.errors import AllKeysExhaustedError, NoActiveAgentError
 from konsilisyum.core.logging import setup_logging
 from konsilisyum.core.memory import MemoryManager
 from konsilisyum.core.models import (
-    APIKey,
     Agent,
+    APIKey,
     Message,
     Session,
     SessionStatus,
@@ -26,7 +24,6 @@ from konsilisyum.core.models import (
     Topic,
     TopicMode,
 )
-from konsilisyum.core.errors import AllKeysExhaustedError, NoActiveAgentError
 from konsilisyum.core.orchestrator import Orchestrator
 from konsilisyum.core.session import SessionManager
 
@@ -62,21 +59,24 @@ def print_message(msg: Message, agents: list[Agent]):
                 role = f" ({a.role})"
                 break
         console.print(
-            f"[{style}][{msg.timestamp:%H:%M:%S}] {msg.speaker}{role}:[/{style}] "
-            f"{msg.content}"
+            f"[{style}][{msg.timestamp:%H:%M:%S}] {msg.speaker}{role}:[/{style}] {msg.content}"
         )
 
 
 def print_welcome(session: Session):
     console.print()
-    console.print(Panel(
-        "[bold]KONSILISYUM[/bold]\n[dim]Yasayan Fikir Meclisi[/dim]",
-        border_style="bright_blue",
-    ))
+    console.print(
+        Panel(
+            "[bold]KONSILISYUM[/bold]\n[dim]Yasayan Fikir Meclisi[/dim]",
+            border_style="bright_blue",
+        )
+    )
     console.print()
     console.print("[bold]Konsil uyeleri:[/bold]")
     for a in session.agents:
-        status = {"active": "\u25cf", "muted": "\u25cb", "removed": "\u2717"}.get(a.status.value, "?")
+        status = {"active": "\u25cf", "muted": "\u25cb", "removed": "\u2717"}.get(
+            a.status.value, "?"
+        )
         console.print(f"  {status} [bold]{a.name}[/bold] ({a.role}) — {a.goal}")
     console.print()
 
@@ -108,26 +108,32 @@ class KonsilisyumApp:
         self._logger = logger.bind(component="KonsilisyumApp")
 
     def run(self, topic: str | None = None):
-        self._logger.info("starting_konsilisyum", topic=topic, provider=self.config.llm.get("provider"))
+        self._logger.info(
+            "starting_konsilisyum", topic=topic, provider=self.config.llm.get("provider")
+        )
         agents = self.config.get_agents()
         api_keys = self.config.get_api_keys()
 
         if not api_keys:
-            fallback = self.config.get_fallback_key()
+            fallback = self.config.get_mistral_fallback_key()
             if fallback:
                 api_keys = [APIKey(id="fallback", key=fallback, is_pool=True)]
             else:
                 self._logger.error("no_api_keys_found", provider=self.config.llm.get("provider"))
                 console.print("[bold red]Hata: API anahtari bulunamadi.[/bold red]")
                 console.print("data/config.yaml dosyasinda api_keys ekleyin veya")
-                console.print(f"{self.config.llm.get('provider', 'mistral').upper()}_API_KEYS cevre degiskenini ayarlayin.")
+                console.print(
+                    f"{self.config.llm.get('provider', 'mistral').upper()}_API_KEYS cevre degiskenini ayarlayin."
+                )
                 sys.exit(1)
 
         self._logger.info("api_keys_loaded", count=len(api_keys))
         key_pool = KeyPool(api_keys)
 
         api_client = self.config.get_llm_client()
-        self._logger.info("llm_client_initialized", provider=api_client.provider, model=api_client.model)
+        self._logger.info(
+            "llm_client_initialized", provider=api_client.provider, model=api_client.model
+        )
 
         self.memory = MemoryManager(
             context_window_size=self.config.memory.get("context_window_size", 8),
@@ -234,7 +240,9 @@ class KonsilisyumApp:
                 continue
             except AllKeysExhaustedError:
                 self._logger.error("all_keys_exhausted")
-                console.print("[bold red]Tüm API anahtarlari tukendi. /keys ile kontrol edin.[/bold red]")
+                console.print(
+                    "[bold red]Tüm API anahtarlari tukendi. /keys ile kontrol edin.[/bold red]"
+                )
                 self.orchestrator.pause()
                 continue
             except RuntimeError as e:
@@ -252,7 +260,9 @@ class KonsilisyumApp:
                 continue
 
             if result.error:
-                self._logger.warning("api_error", error=result.error, turn=self.session.current_turn)
+                self._logger.warning(
+                    "api_error", error=result.error, turn=self.session.current_turn
+                )
                 console.print(f"[bold red]API Hatasi: {result.error}[/bold red]")
                 continue
 
@@ -261,20 +271,30 @@ class KonsilisyumApp:
                     self._logger.debug("repetition_detected", turn=self.session.current_turn)
                     console.print("[dim][tekrar tespit edildi, pas gecildi][/dim]")
             elif result.message:
-                self._logger.debug("agent_message", turn=result.message.turn, speaker=result.message.speaker, length=len(result.message.content))
+                self._logger.debug(
+                    "agent_message",
+                    turn=result.message.turn,
+                    speaker=result.message.speaker,
+                    length=len(result.message.content),
+                )
                 print_message(result.message, self.session.agents)
 
             if result.summary:
                 self._logger.info("summary_generated", turn_range=result.summary.turn_range)
                 console.print()
-                console.print(Panel(
-                    result.summary.content,
-                    title=f"[bold]Ozet (Tur {result.summary.turn_range[0]}-{result.summary.turn_range[1]})[/bold]",
-                    border_style="dim",
-                ))
+                console.print(
+                    Panel(
+                        result.summary.content,
+                        title=f"[bold]Ozet (Tur {result.summary.turn_range[0]}-{result.summary.turn_range[1]})[/bold]",
+                        border_style="dim",
+                    )
+                )
                 console.print()
 
-            if self.session.current_turn % self.config.session_config.get("auto_save_interval", 5) == 0:
+            if (
+                self.session.current_turn % self.config.session_config.get("auto_save_interval", 5)
+                == 0
+            ):
                 self.session_manager.save(self.session)
                 self._logger.debug("session_saved", turn=self.session.current_turn)
 
@@ -325,7 +345,9 @@ class KonsilisyumApp:
                 console.print(result.message)
 
             if result.should_quit:
-                self._logger.info("quit_command", session_id=self.session.id if self.session else None)
+                self._logger.info(
+                    "quit_command", session_id=self.session.id if self.session else None
+                )
                 self._running = False
                 self.session.status = SessionStatus.ENDED
                 self.session_manager.save(self.session)
@@ -335,6 +357,7 @@ class KonsilisyumApp:
 
 def main():
     import argparse
+
     parser = argparse.ArgumentParser(description="Konsilisyum - Yasayan Fikir Meclisi")
     parser.add_argument("topic", nargs="?", default=None, help="Tartisma konusu")
     parser.add_argument("--config", default="data/config.yaml", help="Yapilandirma dosyasi")
@@ -343,6 +366,7 @@ def main():
 
     if args.tui:
         from konsilisyum.tui.app import run_tui
+
         run_tui(topic=args.topic)
     else:
         app = KonsilisyumApp()

@@ -99,7 +99,7 @@ def _parse_args(cmd: str, params: list[str], body: str) -> dict:
             value = field_parts[1] if len(field_parts) > 1 else ""
             return {params[0]: agent_name, params[1]: field, params[2]: value}
         return {params[0]: agent_name}
-    return {p: body for p in params}
+    return dict.fromkeys(params, body)
 
 
 def get_help_text() -> str:

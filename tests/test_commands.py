@@ -1,22 +1,37 @@
 import pytest
+
 from konsilisyum.api.keypool import KeyPool
+from konsilisyum.api.mistral import MistralClient
 from konsilisyum.commands.handler import CommandHandler
 from konsilisyum.core.memory import MemoryManager
 from konsilisyum.core.models import (
-    Agent, AgentStatus, APIKey, Message, Session, SessionStatus,
-    SpeakerType, Topic, TopicMode,
+    Agent,
+    AgentStatus,
+    APIKey,
+    Message,
+    Session,
+    SessionStatus,
+    SpeakerType,
+    Topic,
+    TopicMode,
 )
 from konsilisyum.core.orchestrator import Orchestrator
-from konsilisyum.api.mistral import MistralClient
 
 
 @pytest.fixture
 def setup():
     agents = [
-        Agent(name="Atlas", role="Stratejist", goal="Test", blind_spot="Test",
-              style="Test", trigger="Test"),
-        Agent(name="Mira", role="Etikci", goal="Test", blind_spot="Test",
-              style="Test", trigger="Test"),
+        Agent(
+            name="Atlas",
+            role="Stratejist",
+            goal="Test",
+            blind_spot="Test",
+            style="Test",
+            trigger="Test",
+        ),
+        Agent(
+            name="Mira", role="Etikci", goal="Test", blind_spot="Test", style="Test", trigger="Test"
+        ),
     ]
     session = Session(agents=agents)
     topic = Topic(content="Test konu")
@@ -39,6 +54,7 @@ async def test_cmd_pause(setup):
     assert result.success
     assert session.status == SessionStatus.PAUSED
 
+
 @pytest.mark.asyncio
 async def test_cmd_resume(setup):
     handler, session, _, orchestrator = setup
@@ -47,12 +63,14 @@ async def test_cmd_resume(setup):
     assert result.success
     assert session.status == SessionStatus.RUNNING
 
+
 @pytest.mark.asyncio
 async def test_cmd_say(setup):
     handler, session, memory, _ = setup
     result = await handler.handle("say", {"message": "Test mesaj"})
     assert result.success
     assert any(m.content == "Test mesaj" for m in session.messages)
+
 
 @pytest.mark.asyncio
 async def test_cmd_ask(setup):
@@ -61,6 +79,7 @@ async def test_cmd_ask(setup):
     assert result.success
     assert any("@Mira" in m.content for m in session.messages)
 
+
 @pytest.mark.asyncio
 async def test_cmd_agents(setup):
     handler, session, _, _ = setup
@@ -68,6 +87,7 @@ async def test_cmd_agents(setup):
     assert result.success
     assert "Atlas" in result.message
     assert "Mira" in result.message
+
 
 @pytest.mark.asyncio
 async def test_cmd_mute_unmute(setup):
@@ -80,6 +100,7 @@ async def test_cmd_mute_unmute(setup):
     assert result.success
     assert session.agents[0].status == AgentStatus.ACTIVE
 
+
 @pytest.mark.asyncio
 async def test_cmd_kick(setup):
     handler, session, _, _ = setup
@@ -87,12 +108,14 @@ async def test_cmd_kick(setup):
     assert result.success
     assert session.agents[1].status == AgentStatus.REMOVED
 
+
 @pytest.mark.asyncio
 async def test_cmd_spawn(setup):
     handler, session, _, _ = setup
     result = await handler.handle("spawn", {"definition": "Kaan Supheci Bos fikirleri delmek"})
     assert result.success
     assert any(a.name == "Kaan" for a in session.agents)
+
 
 @pytest.mark.asyncio
 async def test_cmd_profile(setup):
@@ -102,6 +125,7 @@ async def test_cmd_profile(setup):
     assert "Atlas" in result.message
     assert "Stratejist" in result.message
 
+
 @pytest.mark.asyncio
 async def test_cmd_edit(setup):
     handler, session, _, _ = setup
@@ -109,12 +133,14 @@ async def test_cmd_edit(setup):
     assert result.success
     assert session.agents[0].role == "Vizyoner"
 
+
 @pytest.mark.asyncio
 async def test_cmd_topic(setup):
     handler, session, _, _ = setup
     result = await handler.handle("topic", {"topic": "Yeni konu basligi"})
     assert result.success
     assert session.current_topic.content == "Yeni konu basligi"
+
 
 @pytest.mark.asyncio
 async def test_cmd_evolve_focus(setup):
@@ -127,13 +153,16 @@ async def test_cmd_evolve_focus(setup):
     assert result.success
     assert session.current_topic.mode == TopicMode.FOCUS
 
+
 @pytest.mark.asyncio
 async def test_cmd_role(setup):
     handler, session, _, _ = setup
     result = await handler.handle("role", {"role": "referee"})
     assert result.success
     from konsilisyum.core.models import UserRole
+
     assert session.user_role == UserRole.REFEREE
+
 
 @pytest.mark.asyncio
 async def test_cmd_keys(setup):
@@ -142,6 +171,7 @@ async def test_cmd_keys(setup):
     assert result.success
     assert "Toplam: 1" in result.message
 
+
 @pytest.mark.asyncio
 async def test_cmd_status(setup):
     handler, session, _, _ = setup
@@ -149,17 +179,20 @@ async def test_cmd_status(setup):
     assert result.success
     assert "Test konu" in result.message
 
+
 @pytest.mark.asyncio
 async def test_find_agent_fuzzy(setup):
     handler, session, _, _ = setup
     result = await handler.handle("profile", {"agent": "at"})
     assert result.success  # prefix match "at" -> "Atlas"
 
+
 @pytest.mark.asyncio
 async def test_find_agent_not_found(setup):
     handler, session, _, _ = setup
     result = await handler.handle("profile", {"agent": "YokBoyle"})
     assert not result.success
+
 
 @pytest.mark.asyncio
 async def test_cmd_quit(setup):
@@ -171,10 +204,15 @@ async def test_cmd_quit(setup):
 @pytest.mark.asyncio
 async def test_cmd_export_markdown(setup):
     handler, session, _, _ = setup
-    session.messages.append(Message(
-        turn=1, speaker="Atlas", content="Test mesaji",
-        speaker_type=SpeakerType.AGENT, topic="Test konu",
-    ))
+    session.messages.append(
+        Message(
+            turn=1,
+            speaker="Atlas",
+            content="Test mesaji",
+            speaker_type=SpeakerType.AGENT,
+            topic="Test konu",
+        )
+    )
     result = await handler.handle("export", {"format": "md"})
     assert result.success
     assert "Test mesaji" in result.message
@@ -184,10 +222,15 @@ async def test_cmd_export_markdown(setup):
 @pytest.mark.asyncio
 async def test_cmd_export_jsonl(setup):
     handler, session, _, _ = setup
-    session.messages.append(Message(
-        turn=1, speaker="Atlas", content="Test mesaji",
-        speaker_type=SpeakerType.AGENT, topic="Test konu",
-    ))
+    session.messages.append(
+        Message(
+            turn=1,
+            speaker="Atlas",
+            content="Test mesaji",
+            speaker_type=SpeakerType.AGENT,
+            topic="Test konu",
+        )
+    )
     result = await handler.handle("export", {"format": "jsonl"})
     assert result.success
     assert "Test mesaji" in result.message
@@ -197,10 +240,15 @@ async def test_cmd_export_jsonl(setup):
 @pytest.mark.asyncio
 async def test_cmd_export_text(setup):
     handler, session, _, _ = setup
-    session.messages.append(Message(
-        turn=1, speaker="Atlas", content="Test mesaji",
-        speaker_type=SpeakerType.AGENT, topic="Test konu",
-    ))
+    session.messages.append(
+        Message(
+            turn=1,
+            speaker="Atlas",
+            content="Test mesaji",
+            speaker_type=SpeakerType.AGENT,
+            topic="Test konu",
+        )
+    )
     result = await handler.handle("export", {"format": "txt"})
     assert result.success
     assert "Test mesaji" in result.message
@@ -232,8 +280,13 @@ async def test_cmd_load_not_found(setup):
 async def test_repetition_detection_in_orchestrator(setup):
     _, session, memory, orchestrator = setup
     for i in range(5):
-        memory.add_message(Message(
-            turn=i, speaker="Atlas", content="Bu konuda yapay zeka tehlikeli olabilir",
-            speaker_type=SpeakerType.AGENT, topic="Test",
-        ))
+        memory.add_message(
+            Message(
+                turn=i,
+                speaker="Atlas",
+                content="Bu konuda yapay zeka tehlikeli olabilir",
+                speaker_type=SpeakerType.AGENT,
+                topic="Test",
+            )
+        )
     assert memory.detect_repetition("Bu konuda yapay zeka tehlikeli olabilir diye dusunuyorum")

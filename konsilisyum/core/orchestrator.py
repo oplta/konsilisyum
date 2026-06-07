@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import random
 from dataclasses import dataclass
-from datetime import datetime
 
 from konsilisyum.api.keypool import KeyPool
 from konsilisyum.api.mistral import MistralClient
@@ -11,15 +10,12 @@ from konsilisyum.core.errors import NoActiveAgentError
 from konsilisyum.core.memory import MemoryManager
 from konsilisyum.core.models import (
     Agent,
-    AgentStatus,
     Message,
     Session,
     SessionStatus,
     SpeakerType,
     Summary,
-    TopicMode,
 )
-
 
 SYSTEM_PROMPT_TEMPLATE = """Sen {name}'sin. Rolun: {role}.
 
@@ -196,13 +192,13 @@ class Orchestrator:
         context = self.memory.build_context_window()
 
         directive_parts: list[str] = []
-        topic_text = self.session.current_topic.content if self.session.current_topic else "Serbest tartisma"
+        topic_text = (
+            self.session.current_topic.content if self.session.current_topic else "Serbest tartisma"
+        )
         directive_parts.append(f"Konu: {topic_text}")
 
         if self._user_message_pending:
-            directive_parts.append(
-                f"Kullanici bir mesaj birakti: \"{self._user_message_pending}\""
-            )
+            directive_parts.append(f'Kullanici bir mesaj birakti: "{self._user_message_pending}"')
             directive_parts.append("Buna tepki ver.")
             self._user_message_pending = None
 
@@ -294,9 +290,7 @@ class Orchestrator:
         if not messages:
             return None
 
-        messages_text = "\n".join(
-            f"[Tur {m.turn}] {m.speaker}: {m.content}" for m in messages
-        )
+        messages_text = "\n".join(f"[Tur {m.turn}] {m.speaker}: {m.content}" for m in messages)
         topic = self.session.current_topic.content if self.session.current_topic else ""
         prompt = SUMMARY_PROMPT.format(
             topic=topic,
@@ -325,6 +319,7 @@ class Orchestrator:
         Guncelleme islemlerini paralel yaparak zaman kazanıyoruz.
         O(N_ajan * gecikme) yerine O(gecikme) sürede tamamlanıyor.
         """
+
         async def update_single_agent(agent: Agent):
             current_memory = self.memory.get_agent_memory(agent.id)
             recent = self.memory.history[-5:]
