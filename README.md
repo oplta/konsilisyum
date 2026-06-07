@@ -8,7 +8,7 @@ Terminalde çalışan, birden fazla yapay zeka ajanının kendi aralarında tart
 senin istediğin anda dahil olup yön verebildiğin canlı bir fikir meclisi.
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-48%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-55%20passed-brightgreen.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-green.svg)]()
 
 </div>
@@ -80,6 +80,9 @@ konsilisyum "Yapay zeka eğitimi geleceği nasıl şekillendirir?"
 
 # Konu sorarak başlat
 konsilisyum
+
+# Textual TUI ile başlat
+konsilisyum --tui "Yapay zeka eğitimi geleceği nasıl şekillendirir?"
 ```
 
 ### Tartışma Akışı
@@ -151,6 +154,8 @@ konsilisyum
 | Komut | Açıklama |
 |-------|----------|
 | `/save` | Oturumu kaydet |
+| `/load` | Oturum yükle veya listele |
+| `/export md` | Oturumu dışa aktar (md/jsonl/txt) |
 | `/keys` | API anahtarı durumu |
 | `/role hakem` | Kullanıcı rolü ata |
 
@@ -164,7 +169,8 @@ konsilisyum/
 │   ├── models.py          # Veri modelleri (Agent, Message, Topic, Session)
 │   ├── orchestrator.py    # Tur döngüsü, konuşmacı seçimi, prompt yönetimi
 │   ├── memory.py          # Paylaşımlı geçmiş + ajan bazlı hafıza
-│   └── session.py         # JSONL oturum kaydı ve yükleme
+│   ├── session.py         # JSONL oturum kaydı ve yükleme
+│   └── errors.py          # Hata sınıfları hiyerarşisi
 ├── api/
 │   ├── mistral.py         # Mistral AI API istemcisi + retry
 │   └── keypool.py         # Çoklu anahtar havuzu + rotasyon
@@ -174,8 +180,11 @@ konsilisyum/
 ├── config/
 │   ├── settings.py        # YAML + .env yapılandırma
 │   └── defaults.py        # Varsayılan ajan tanımları
+├── tui/
+│   ├── app.py             # Textual TUI uygulaması
+│   └── theme.tcss         # TUI stil dosyası
 ├── main.py                # CLI giriş noktası
-└── tests/                 # 48 test
+└── tests/                 # 55 test
 ```
 
 ---
@@ -224,8 +233,8 @@ pytest tests/ -v
 ## 🗺 Yol Haritası
 
 - [x] **Faz 1:** Çekirdek prototip — 3 ajan, tur döngüsü, temel komutlar
-- [ ] **Faz 2:** Orkestratör iyileştirme, Textual TUI, oturum yükleme
-- [ ] **Faz 3:** Karar taslakları, yapılacaklar listesi, dışa aktarma, rol sistemi
+- [x] **Faz 2:** Orkestratör iyileştirme, Textual TUI, oturum yükleme
+- [x] **Faz 3:** Karar taslakları, yapılacaklar listesi, dışa aktarma, rol sistemi
 - [ ] **Faz 4:** Web arama (Tavily), vektör hafıza, gelişmiş TUI
 
 ---
