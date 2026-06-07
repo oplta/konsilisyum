@@ -7,6 +7,7 @@ from datetime import datetime
 
 from konsilisyum.api.keypool import KeyPool
 from konsilisyum.api.mistral import MistralClient
+from konsilisyum.core.errors import NoActiveAgentError
 from konsilisyum.core.memory import MemoryManager
 from konsilisyum.core.models import (
     Agent,
@@ -114,7 +115,7 @@ class Orchestrator:
     def select_speaker(self) -> Agent:
         candidates = self.session.active_agents
         if not candidates:
-            raise RuntimeError("Konuşacak aktif ajan yok")
+            raise NoActiveAgentError("Konuşacak aktif ajan yok")
 
         scores: dict[str, float] = {}
         for agent in candidates:

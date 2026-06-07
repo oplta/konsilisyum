@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
+from konsilisyum.core.errors import AllKeysExhaustedError
 from konsilisyum.core.models import APIKey, Agent, KeyStatus
 
 
@@ -28,7 +29,7 @@ class KeyPool:
             self._rr_index += 1
             return key
 
-        raise RuntimeError("Kullanilabilir API anahtari yok")
+        raise AllKeysExhaustedError("Kullanilabilir API anahtari yok")
 
     def _is_available(self, key: APIKey) -> bool:
         if key.status in (KeyStatus.EXHAUSTED, KeyStatus.ERROR):

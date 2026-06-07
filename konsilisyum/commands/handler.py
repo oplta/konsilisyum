@@ -18,6 +18,7 @@ from konsilisyum.core.models import (
     TopicMode,
     UserRole,
 )
+from konsilisyum.core.errors import SessionNotFoundError
 from konsilisyum.core.orchestrator import Orchestrator
 from konsilisyum.core.session import SessionManager
 
@@ -290,7 +291,7 @@ class CommandHandler:
             return CommandResult(True, "\n".join(lines))
         try:
             loaded = self.session_manager.load(file)
-        except FileNotFoundError as e:
+        except SessionNotFoundError as e:
             return CommandResult(False, str(e))
         except Exception as e:
             return CommandResult(False, f"Oturum yuklenemedi: {e}")

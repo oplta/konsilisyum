@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from konsilisyum.core.errors import SessionNotFoundError
 from konsilisyum.core.models import Agent, Message, Session, SessionStatus, Topic
 
 
@@ -33,7 +34,7 @@ class SessionManager:
     def load(self, session_id: str) -> Session:
         meta_path = self._safe_path(session_id, ".json")
         if not meta_path.exists():
-            raise FileNotFoundError(f"Oturum bulunamadi: {session_id}")
+            raise SessionNotFoundError(f"Oturum bulunamadi: {session_id}")
 
         meta = json.loads(meta_path.read_text())
 
