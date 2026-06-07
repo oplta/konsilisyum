@@ -1,0 +1,142 @@
+site_name: Konsilisyum
+site_description: Yaşayan Fikir Meclisi — Terminalde çoklu ajan tartışma ortamı
+site_author: Mehmet Emin POLAT
+site_url: https://oplta.github.io/konsilisyum/
+repo_url: https://github.com/oplta/konsilisyum
+repo_name: oplta/konsilisyum
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  language: tr
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - content.tooltips
+    - toc.follow
+    - palette.toggle
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Karanlık moda geç
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Aydınlık moda geç
+  font:
+    text: Inter
+    code: JetBrains Mono
+  icon:
+    repo: fontawesome/brands/github
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/oplta/konsilisyum
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/konsilisyum/
+  generator: false
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - meta
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.caret
+  - pymdownx.tilde
+  - pymdownx.magiclink
+
+plugins:
+  - search:
+      lang: tr
+  - git-revision-date-localized:
+      enable_creation_date: true
+      enable_git_follow: false
+      type: datetime
+      fallback_to_build_date: true
+
+nav:
+  - Ana Sayfa: index.md
+  - Başlarken:
+      - Kurulum: getting-started/installation.md
+      - Hızlı Başlangıç: getting-started/quickstart.md
+      - İlk Oturum: getting-started/first-session.md
+  - Kullanım:
+      - Ajanlar: usage/agents.md
+      - Komutlar: usage/commands.md
+      - Oturumlar: usage/sessions.md
+      - TUI Kısayolları: usage/tui.md
+  - Mimari:
+      - Genel Bakış: architecture/overview.md
+      - Orkestratör: architecture/orchestrator.md
+      - Hafıza Katmanı: architecture/memory.md
+      - API Katmanı: architecture/api.md
+      - Komut Sistemi: architecture/commands.md
+  - API Referansı:
+      - LLM Sağlayıcıları: api/providers.md
+      - Veri Modelleri: api/models.md
+      - Yapılandırma: api/config.md
+  - Geliştirme:
+      - Test: development/testing.md
+      - Katkıda Bulunma: development/contributing.md
+      - Sürüm Notları: development/changelog.md
+  - Örnekler:
+      - Genel Bakış: examples/index.md
+      - İş Planı Tartışması: examples/business-plan.md
+      - Etik Senaryo: examples/ethics.md
+      - Teknik Mimari: examples/tech-design.md
+
+extra_css:
+  - assets/css/extra.css
+extra_javascript:
+  - assets/js/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
