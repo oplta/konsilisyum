@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
-from uuid import uuid4
 
 from konsilisyum.api.keypool import KeyPool
 from konsilisyum.commands.parser import get_help_text
+from konsilisyum.core.errors import SessionNotFoundError
 from konsilisyum.core.memory import MemoryManager
 from konsilisyum.core.models import (
     Agent,
@@ -18,7 +17,6 @@ from konsilisyum.core.models import (
     TopicMode,
     UserRole,
 )
-from konsilisyum.core.errors import SessionNotFoundError
 from konsilisyum.core.orchestrator import Orchestrator
 from konsilisyum.core.session import SessionManager
 
@@ -239,7 +237,9 @@ class CommandHandler:
         editable = {"role", "goal", "blind_spot", "style", "trigger", "name"}
         field_lower = field.lower()
         if field_lower not in editable:
-            return CommandResult(False, f"Duzenlenemez alan: {field}. Alanlar: {', '.join(editable)}")
+            return CommandResult(
+                False, f"Duzenlenemez alan: {field}. Alanlar: {', '.join(editable)}"
+            )
         setattr(target, field_lower, value)
         return CommandResult(True, f"{target.name}.{field_lower} = {value}")
 
@@ -292,7 +292,9 @@ class CommandHandler:
                 return CommandResult(False, "Kayitli oturum yok.")
             lines = ["Kayitli oturumlar:"]
             for s in sessions[:10]:
-                lines.append(f"  {s['id'][:8]}... | {s.get('name', '')} | Tur: {s.get('turn_count', 0)} | {s.get('created_at', '')[:16]}")
+                lines.append(
+                    f"  {s['id'][:8]}... | {s.get('name', '')} | Tur: {s.get('turn_count', 0)} | {s.get('created_at', '')[:16]}"
+                )
             lines.append("\nKullanim: /load <oturum_id>")
             return CommandResult(True, "\n".join(lines))
         try:

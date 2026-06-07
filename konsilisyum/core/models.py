@@ -183,7 +183,9 @@ class APIKey:
             "last_used": self.last_used.isoformat() if self.last_used else None,
             "last_error": self.last_error,
             "error_count": self.error_count,
-            "rate_limited_until": self.rate_limited_until.isoformat() if self.rate_limited_until else None,
+            "rate_limited_until": self.rate_limited_until.isoformat()
+            if self.rate_limited_until
+            else None,
             "status": self.status.value,
         }
 

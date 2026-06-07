@@ -49,7 +49,9 @@ class SessionManager:
 
         agents = [Agent.from_dict(a) for a in meta.get("agents", [])]
         topics = [Topic.from_dict(t) for t in meta.get("topics", [])]
-        current_topic = Topic.from_dict(meta["current_topic"]) if meta.get("current_topic") else None
+        current_topic = (
+            Topic.from_dict(meta["current_topic"]) if meta.get("current_topic") else None
+        )
 
         session = Session(
             id=meta["id"],
@@ -70,13 +72,15 @@ class SessionManager:
         for meta_path in self.sessions_dir.glob("*.json"):
             try:
                 meta = json.loads(meta_path.read_text())
-                sessions.append({
-                    "id": meta["id"],
-                    "name": meta.get("name", ""),
-                    "created_at": meta.get("created_at", ""),
-                    "turn_count": meta.get("current_turn", 0),
-                    "status": meta.get("status", ""),
-                })
+                sessions.append(
+                    {
+                        "id": meta["id"],
+                        "name": meta.get("name", ""),
+                        "created_at": meta.get("created_at", ""),
+                        "turn_count": meta.get("current_turn", 0),
+                        "status": meta.get("status", ""),
+                    }
+                )
             except (json.JSONDecodeError, KeyError):
                 continue
         return sorted(sessions, key=lambda s: s.get("created_at", ""), reverse=True)
@@ -112,6 +116,7 @@ class SessionManager:
 
     def _export_jsonl(self, session: Session) -> str:
         import json
+
         lines = []
         for msg in session.messages:
             lines.append(json.dumps(msg.to_dict(), ensure_ascii=False))

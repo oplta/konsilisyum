@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import abc
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -18,7 +17,7 @@ class LLMError(Exception):
 
 
 class RateLimitError(LLMError):
-    def __init__(self, message: str = "Rate limit", retry_after: Optional[int] = None):
+    def __init__(self, message: str = "Rate limit", retry_after: int | None = None):
         super().__init__(message)
         self.retry_after = retry_after
 
@@ -99,13 +98,13 @@ class BaseLLMClient(LLMClient):
                 return await self.complete(system_prompt, user_prompt, api_key)
             except RateLimitError as e:
                 last_error = e
-                wait = e.retry_after or (2 ** attempt)
+                wait = e.retry_after or (2**attempt)
                 await asyncio.sleep(wait)
             except AuthError as e:
                 last_error = e
                 continue
             except (ServerError, TimeoutError) as e:
                 last_error = e
-                await asyncio.sleep(2 ** attempt)
+                await asyncio.sleep(2**attempt)
 
         raise last_error or ServerError("Bilinmeyen hata")

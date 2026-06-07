@@ -1,21 +1,20 @@
 from __future__ import annotations
 
+import copy
 import os
 import re
-import copy
 from pathlib import Path
 
 import yaml
 
 from konsilisyum.api import (
-    MistralClient,
-    OpenAIClient,
     AnthropicClient,
+    MistralClient,
     OllamaClient,
+    OpenAIClient,
 )
 from konsilisyum.config.defaults import DEFAULT_AGENTS
 from konsilisyum.core.models import Agent, APIKey
-
 
 DEFAULT_CONFIG = {
     "llm": {
@@ -120,11 +119,11 @@ class Config:
         agents_data = self._data.get("agents", DEFAULT_AGENTS)
         return [Agent(**a) for a in agents_data]
 
-    def get_fallback_key(self) -> str | None:
+    def get_mistral_fallback_key(self) -> str | None:
         env_key = os.environ.get("MISTRAL_API_KEY", "")
         if env_key:
             return env_key
-        keys = self.get_api_keys()
+        keys = self.get_api_keys("mistral")
         return keys[0].key if keys else None
 
     def get_llm_client(self):
@@ -141,7 +140,9 @@ class Config:
             return AnthropicClient(model=model, max_tokens=max_tokens, temperature=temperature)
         elif provider == "ollama":
             base_url = self.llm.get("base_url", "http://localhost:11434")
-            return OllamaClient(model=model, max_tokens=max_tokens, temperature=temperature, base_url=base_url)
+            return OllamaClient(
+                model=model, max_tokens=max_tokens, temperature=temperature, base_url=base_url
+            )
         else:
             raise ValueError(f"Bilinmeyen LLM sağlayıcısı: {provider}")
 
@@ -156,12 +157,14 @@ class Config:
             for i, key in enumerate(keys):
                 assigned = agents[i].name if i < len(agents) else None
                 is_pool = i >= len(agents)
-                result.append(APIKey(
-                    id=f"key-{i:03d}",
-                    key=key,
-                    assigned_agent=assigned,
-                    is_pool=is_pool,
-                ))
+                result.append(
+                    APIKey(
+                        id=f"key-{i:03d}",
+                        key=key,
+                        assigned_agent=assigned,
+                        is_pool=is_pool,
+                    )
+                )
             return result
 
         # Yoksa config.yaml'daki api_keys'ten oku
@@ -171,12 +174,14 @@ class Config:
             key_val = k.get("key", "")
             if not key_val:
                 continue
-            result.append(APIKey(
-                id=k.get("id", f"key-{i:02d}"),
-                key=key_val,
-                assigned_agent=k.get("assigned"),
-                is_pool=k.get("pool", False),
-            ))
+            result.append(
+                APIKey(
+                    id=k.get("id", f"key-{i:02d}"),
+                    key=key_val,
+                    assigned_agent=k.get("assigned"),
+                    is_pool=k.get("pool", False),
+                )
+            )
         return result
 
     def get_fallback_key(self, provider: str | None = None) -> str | None:

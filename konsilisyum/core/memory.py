@@ -1,18 +1,54 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime
-from uuid import uuid4
 
-from konsilisyum.core.models import Agent, Message, SpeakerType, Summary
-
+from konsilisyum.core.models import Message, SpeakerType, Summary
 
 STOP_WORDS_TR = {
-    "ve", "da", "de", "bu", "su", "bir", "icin", "ile", "ama", "fakat",
-    "gibi", "olarak", "cok", "daha", "en", "diye", "ki", "ne", "mi",
-    "mı", "mu", "mu", "var", "yok", "her", "hic", "o", "ben", "sen",
-    "biz", "siz", "onlar", "ilk", "son", "ayni", "kendi", "nasil",
-    "neden", "niye", "hangi", "tum", "bazı", "ise", "cunku", "eger",
+    "ve",
+    "da",
+    "de",
+    "bu",
+    "su",
+    "bir",
+    "icin",
+    "ile",
+    "ama",
+    "fakat",
+    "gibi",
+    "olarak",
+    "cok",
+    "daha",
+    "en",
+    "diye",
+    "ki",
+    "ne",
+    "mi",
+    "mı",
+    "mu",
+    "var",
+    "yok",
+    "her",
+    "hic",
+    "o",
+    "ben",
+    "sen",
+    "biz",
+    "siz",
+    "onlar",
+    "ilk",
+    "son",
+    "ayni",
+    "kendi",
+    "nasil",
+    "neden",
+    "niye",
+    "hangi",
+    "tum",
+    "bazı",
+    "ise",
+    "cunku",
+    "eger",
 }
 
 
@@ -55,7 +91,7 @@ class MemoryManager:
             parts.append("")
 
         recent = [m for m in self.history if not m.is_summary]
-        recent = recent[-self.context_window_size:]
+        recent = recent[-self.context_window_size :]
         for msg in recent:
             role_tag = f" ({msg.speaker_type.value})" if msg.speaker_type.value == "user" else ""
             parts.append(f"[Tur {msg.turn}] {msg.speaker}{role_tag}: {msg.content}")
@@ -69,10 +105,10 @@ class MemoryManager:
         return "\n".join(f"- {n}" for n in notes)
 
     def update_agent_memory(self, agent_id: str, raw_notes: str):
-        lines = [l.strip().lstrip("- ").strip() for l in raw_notes.strip().split("\n") if l.strip()]
+        lines = [line.strip().lstrip("- ").strip() for line in raw_notes.strip().split("\n") if line.strip()]
         existing = self.agent_memories.get(agent_id, [])
         combined = existing + lines
-        self.agent_memories[agent_id] = combined[-self.max_agent_memory_items:]
+        self.agent_memories[agent_id] = combined[-self.max_agent_memory_items :]
 
     def add_summary(self, summary: Summary):
         self.summaries.append(summary)

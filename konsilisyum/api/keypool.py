@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from konsilisyum.core.errors import AllKeysExhaustedError
-from konsilisyum.core.models import APIKey, Agent, KeyStatus
+from konsilisyum.core.models import Agent, APIKey, KeyStatus
 
 
 class KeyPool:

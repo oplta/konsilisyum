@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
 
 import structlog
 from structlog.typing import EventDict
@@ -26,7 +25,7 @@ def add_logger_name(logger: logging.Logger, method_name: str, event_dict: EventD
 
 def setup_logging(
     log_level: str = "INFO",
-    log_file: Optional[str] = None,
+    log_file: str | None = None,
     json_format: bool = False,
 ) -> structlog.BoundLogger:
     """Structured logging setup with console and optional file output."""
@@ -41,13 +40,9 @@ def setup_logging(
     ]
 
     if json_format:
-        console_processors = shared_processors + [
-            structlog.processors.JSONRenderer(),
-        ]
+        processor = structlog.processors.JSONRenderer()
     else:
-        console_processors = shared_processors + [
-            structlog.dev.ConsoleRenderer(colors=True),
-        ]
+        processor = structlog.dev.ConsoleRenderer(colors=True)
 
     handlers: list[logging.Handler] = [
         logging.StreamHandler(sys.stdout),
@@ -84,7 +79,7 @@ def setup_logging(
     )
 
     formatter = structlog.stdlib.ProcessorFormatter(
-        processor=structlog.dev.ConsoleRenderer(colors=True) if not json_format else structlog.processors.JSONRenderer(),
+        processor=processor,
         foreign_pre_chain=shared_processors,
     )
 
@@ -101,7 +96,7 @@ def get_logger(name: str) -> structlog.BoundLogger:
 class CorrelationLogger:
     """Logger with correlation ID support for request tracing."""
 
-    def __init__(self, logger: structlog.BoundLogger, correlation_id: Optional[str] = None):
+    def __init__(self, logger: structlog.BoundLogger, correlation_id: str | None = None):
         self._logger = logger
         self._correlation_id = correlation_id
 
@@ -110,7 +105,7 @@ class CorrelationLogger:
             event_dict["correlation_id"] = self._correlation_id
         return event_dict
 
-    def bind(self, **kwargs) -> "CorrelationLogger":
+    def bind(self, **kwargs) -> CorrelationLogger:
         new_logger = self._logger.bind(**kwargs)
         return CorrelationLogger(new_logger, self._correlation_id)
 
@@ -133,5 +128,5 @@ class CorrelationLogger:
         self._logger.exception(event, **self._add_correlation(kwargs))
 
 
-def create_correlation_logger(name: str, correlation_id: Optional[str] = None) -> CorrelationLogger:
+def create_correlation_logger(name: str, correlation_id: str | None = None) -> CorrelationLogger:
     return CorrelationLogger(get_logger(name), correlation_id)
