@@ -11,7 +11,6 @@ from rich.panel import Panel
 from rich.text import Text
 
 from konsilisyum.api.keypool import KeyPool
-from konsilisyum.api.mistral import MistralClient
 from konsilisyum.commands.handler import CommandHandler
 from konsilisyum.commands.parser import InputType, parse_input
 from konsilisyum.config.settings import Config
@@ -24,6 +23,7 @@ from konsilisyum.core.models import (
     SessionStatus,
     SpeakerType,
     Topic,
+    TopicMode,
 )
 from konsilisyum.core.errors import AllKeysExhaustedError, NoActiveAgentError
 from konsilisyum.core.orchestrator import Orchestrator
@@ -113,16 +113,12 @@ class KonsilisyumApp:
             else:
                 console.print("[bold red]Hata: API anahtari bulunamadi.[/bold red]")
                 console.print("data/config.yaml dosyasinda api_keys ekleyin veya")
-                console.print("MISTRAL_API_KEY cevre degiskenini ayarlayin.")
+                console.print(f"{self.config.llm.get('provider', 'mistral').upper()}_API_KEYS cevre degiskenini ayarlayin.")
                 sys.exit(1)
 
         key_pool = KeyPool(api_keys)
 
-        api_client = MistralClient(
-            model=self.config.llm.get("model", "mistral-small-latest"),
-            max_tokens=self.config.llm.get("max_tokens", 300),
-            temperature=self.config.llm.get("temperature", 0.7),
-        )
+        api_client = self.config.get_llm_client()
 
         self.memory = MemoryManager(
             context_window_size=self.config.memory.get("context_window_size", 8),

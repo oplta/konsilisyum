@@ -7,13 +7,20 @@ from pathlib import Path
 
 import yaml
 
+from konsilisyum.api import (
+    MistralClient,
+    OpenAIClient,
+    AnthropicClient,
+    OllamaClient,
+)
 from konsilisyum.config.defaults import DEFAULT_AGENTS
 from konsilisyum.core.models import Agent, APIKey
 
 
 DEFAULT_CONFIG = {
     "llm": {
-        "model": "mistral-large-latest",
+        "provider": "mistral",
+        "model": "mistral-small-latest",
         "max_tokens": 300,
         "temperature": 0.7,
     },
@@ -107,9 +114,35 @@ class Config:
         agents_data = self._data.get("agents", DEFAULT_AGENTS)
         return [Agent(**a) for a in agents_data]
 
-    def get_api_keys(self) -> list[APIKey]:
-        # Once .env'deki MISTRAL_API_KEYS'ten oku (comma-separated)
-        env_keys = os.environ.get("MISTRAL_API_KEYS", "")
+    def get_fallback_key(self) -> str | None:
+        env_key = os.environ.get("MISTRAL_API_KEY", "")
+        if env_key:
+            return env_key
+        keys = self.get_api_keys()
+        return keys[0].key if keys else None
+
+    def get_llm_client(self):
+        provider = self.llm.get("provider", "mistral").lower()
+        model = self.llm.get("model", "mistral-small-latest")
+        max_tokens = self.llm.get("max_tokens", 300)
+        temperature = self.llm.get("temperature", 0.7)
+
+        if provider == "mistral":
+            return MistralClient(model=model, max_tokens=max_tokens, temperature=temperature)
+        elif provider == "openai":
+            return OpenAIClient(model=model, max_tokens=max_tokens, temperature=temperature)
+        elif provider == "anthropic":
+            return AnthropicClient(model=model, max_tokens=max_tokens, temperature=temperature)
+        elif provider == "ollama":
+            base_url = self.llm.get("base_url", "http://localhost:11434")
+            return OllamaClient(model=model, max_tokens=max_tokens, temperature=temperature, base_url=base_url)
+        else:
+            raise ValueError(f"Bilinmeyen LLM sağlayıcısı: {provider}")
+
+    def get_api_keys(self, provider: str | None = None) -> list[APIKey]:
+        provider = provider or self.llm.get("provider", "mistral")
+        env_var = f"{provider.upper()}_API_KEYS"
+        env_keys = os.environ.get(env_var, "")
         if env_keys:
             keys = [k.strip() for k in env_keys.split(",") if k.strip()]
             result = []
@@ -140,9 +173,10 @@ class Config:
             ))
         return result
 
-    def get_fallback_key(self) -> str | None:
-        env_key = os.environ.get("MISTRAL_API_KEY", "")
+    def get_fallback_key(self, provider: str | None = None) -> str | None:
+        provider = provider or self.llm.get("provider", "mistral")
+        env_key = os.environ.get(f"{provider.upper()}_API_KEY", "")
         if env_key:
             return env_key
-        keys = self.get_api_keys()
+        keys = self.get_api_keys(provider)
         return keys[0].key if keys else None

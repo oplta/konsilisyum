@@ -1,30 +1,26 @@
 from __future__ import annotations
 
-import asyncio
-from dataclasses import dataclass
-
 import httpx
 
-from konsilisyum.core.errors import AuthError, RateLimitError, ServerError
+from konsilisyum.api.llm import (
+    AuthError,
+    BaseLLMClient,
+    CompletionResult,
+    RateLimitError,
+    ServerError,
+)
 
 
-@dataclass
-class CompletionResult:
-    content: str
-    tokens_in: int
-    tokens_out: int
-    model: str
-
-
-class MistralClient:
+class MistralClient(BaseLLMClient):
     BASE_URL = "https://api.mistral.ai/v1"
-    TIMEOUT = 30.0
 
-    def __init__(self, model: str = "mistral-small-latest",
-                 max_tokens: int = 300, temperature: float = 0.7):
-        self.model = model
-        self.max_tokens = max_tokens
-        self.temperature = temperature
+    def __init__(
+        self,
+        model: str = "mistral-small-latest",
+        max_tokens: int = 300,
+        temperature: float = 0.7,
+    ):
+        super().__init__(model, max_tokens, temperature)
 
     async def complete(
         self,
@@ -46,7 +42,7 @@ class MistralClient:
             "temperature": self.temperature,
         }
 
-        async with httpx.AsyncClient(timeout=self.TIMEOUT) as client:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.post(
                 f"{self.BASE_URL}/chat/completions",
                 headers=headers,
@@ -60,9 +56,9 @@ class MistralClient:
                 retry_after=int(retry_after) if retry_after else None,
             )
         if response.status_code == 401:
-            raise AuthError("Gecersiz API anahtari")
+            raise AuthError("Geçersiz API anahtarı")
         if response.status_code >= 500:
-            raise ServerError(f"Sunucu hatasi: {response.status_code}")
+            raise ServerError(f"Sunucu hatası: {response.status_code}")
         if response.status_code != 200:
             raise ServerError(f"Beklenmeyen hata: {response.status_code} - {response.text}")
 
@@ -76,28 +72,3 @@ class MistralClient:
             tokens_out=usage.get("completion_tokens", 0),
             model=data.get("model", self.model),
         )
-
-    async def complete_with_retry(
-        self,
-        system_prompt: str,
-        user_prompt: str,
-        get_key,  # callable -> str
-        max_retries: int = 3,
-    ) -> CompletionResult:
-        last_error: Exception | None = None
-        for attempt in range(max_retries):
-            api_key = get_key()
-            try:
-                return await self.complete(system_prompt, user_prompt, api_key)
-            except RateLimitError as e:
-                last_error = e
-                wait = e.retry_after or (2 ** attempt)
-                await asyncio.sleep(wait)
-            except AuthError as e:
-                last_error = e
-                continue
-            except (ServerError, httpx.TimeoutException) as e:
-                last_error = e
-                await asyncio.sleep(2 ** attempt)
-
-        raise last_error or ServerError("Bilinmeyen hata")

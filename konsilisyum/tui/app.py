@@ -10,7 +10,6 @@ from textual.reactive import reactive
 from textual.widgets import Footer, Header, Input, RichLog, Static
 
 from konsilisyum.api.keypool import KeyPool
-from konsilisyum.api.mistral import MistralClient
 from konsilisyum.commands.handler import CommandHandler
 from konsilisyum.commands.parser import InputType, parse_input
 from konsilisyum.config.settings import Config
@@ -127,11 +126,7 @@ class KonsilisyumTUI(App):
                 return
 
         key_pool = KeyPool(api_keys)
-        api_client = MistralClient(
-            model=self.config.llm.get("model", "mistral-small-latest"),
-            max_tokens=self.config.llm.get("max_tokens", 300),
-            temperature=self.config.llm.get("temperature", 0.7),
-        )
+        api_client = self.config.get_llm_client()
 
         self.memory = MemoryManager(
             context_window_size=self.config.memory.get("context_window_size", 8),
