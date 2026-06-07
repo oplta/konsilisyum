@@ -39,6 +39,11 @@ DEFAULT_CONFIG = {
         "auto_save_interval": 5,
         "sessions_dir": "data/sessions",
     },
+    "logging": {
+        "level": "INFO",
+        "file": "data/logs/konsilisyum.log",
+        "json_format": False,
+    },
 }
 
 ENV_FILE = ".env"
@@ -69,6 +74,7 @@ class Config:
         self.memory = self._data.get("memory", DEFAULT_CONFIG["memory"])
         self.orchestrator = self._data.get("orchestrator", DEFAULT_CONFIG["orchestrator"])
         self.session_config = self._data.get("session", DEFAULT_CONFIG["session"])
+        self.logging_config = self._data.get("logging", DEFAULT_CONFIG["logging"])
 
     @classmethod
     def load(cls, path: str = "data/config.yaml") -> Config:

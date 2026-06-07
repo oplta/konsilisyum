@@ -14,6 +14,7 @@ from konsilisyum.api.keypool import KeyPool
 from konsilisyum.commands.handler import CommandHandler
 from konsilisyum.commands.parser import InputType, parse_input
 from konsilisyum.config.settings import Config
+from konsilisyum.core.logging import setup_logging
 from konsilisyum.core.memory import MemoryManager
 from konsilisyum.core.models import (
     APIKey,
@@ -30,6 +31,9 @@ from konsilisyum.core.orchestrator import Orchestrator
 from konsilisyum.core.session import SessionManager
 
 console = Console()
+
+# Setup structured logging
+logger = setup_logging()
 
 AGENT_COLORS = {
     "Atlas": "bold red",
@@ -101,8 +105,10 @@ class KonsilisyumApp:
         self._user_input_event = threading.Event()
         self._user_input_value: str | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
+        self._logger = logger.bind(component="KonsilisyumApp")
 
     def run(self, topic: str | None = None):
+        self._logger.info("starting_konsilisyum", topic=topic, provider=self.config.llm.get("provider"))
         agents = self.config.get_agents()
         api_keys = self.config.get_api_keys()
 
@@ -111,14 +117,17 @@ class KonsilisyumApp:
             if fallback:
                 api_keys = [APIKey(id="fallback", key=fallback, is_pool=True)]
             else:
+                self._logger.error("no_api_keys_found", provider=self.config.llm.get("provider"))
                 console.print("[bold red]Hata: API anahtari bulunamadi.[/bold red]")
                 console.print("data/config.yaml dosyasinda api_keys ekleyin veya")
                 console.print(f"{self.config.llm.get('provider', 'mistral').upper()}_API_KEYS cevre degiskenini ayarlayin.")
                 sys.exit(1)
 
+        self._logger.info("api_keys_loaded", count=len(api_keys))
         key_pool = KeyPool(api_keys)
 
         api_client = self.config.get_llm_client()
+        self._logger.info("llm_client_initialized", provider=api_client.provider, model=api_client.model)
 
         self.memory = MemoryManager(
             context_window_size=self.config.memory.get("context_window_size", 8),
@@ -211,6 +220,7 @@ class KonsilisyumApp:
                 continue
 
             if not self.session.active_agents:
+                self._logger.warning("no_active_agents", session_id=self.session.id)
                 console.print("[bold red]Aktif ajan kalmadi. /spawn ile ajan ekleyin.[/bold red]")
                 self.orchestrator.pause()
                 continue
@@ -218,19 +228,23 @@ class KonsilisyumApp:
             try:
                 result = await self.orchestrator.execute_turn()
             except NoActiveAgentError:
+                self._logger.warning("no_active_agent_error")
                 console.print("[bold red]Aktif ajan kalmadi. /spawn ile ajan ekleyin.[/bold red]")
                 self.orchestrator.pause()
                 continue
             except AllKeysExhaustedError:
+                self._logger.error("all_keys_exhausted")
                 console.print("[bold red]Tüm API anahtarlari tukendi. /keys ile kontrol edin.[/bold red]")
                 self.orchestrator.pause()
                 continue
             except RuntimeError as e:
+                self._logger.error("runtime_error", error=str(e))
                 console.print(f"[bold red]Hata: {e}[/bold red]")
                 self.orchestrator.pause()
                 continue
 
             if result.error == "max_auto_turns":
+                self._logger.info("max_auto_turns_reached", turn=self.session.current_turn)
                 console.print(
                     "[bold yellow]Maksimum otomatik tur asildi. "
                     "/resume ile devam edin veya /say ile katilin.[/bold yellow]"
@@ -238,16 +252,20 @@ class KonsilisyumApp:
                 continue
 
             if result.error:
+                self._logger.warning("api_error", error=result.error, turn=self.session.current_turn)
                 console.print(f"[bold red]API Hatasi: {result.error}[/bold red]")
                 continue
 
             if result.is_pas:
                 if result.error == "tekrar_tespit":
+                    self._logger.debug("repetition_detected", turn=self.session.current_turn)
                     console.print("[dim][tekrar tespit edildi, pas gecildi][/dim]")
             elif result.message:
+                self._logger.debug("agent_message", turn=result.message.turn, speaker=result.message.speaker, length=len(result.message.content))
                 print_message(result.message, self.session.agents)
 
             if result.summary:
+                self._logger.info("summary_generated", turn_range=result.summary.turn_range)
                 console.print()
                 console.print(Panel(
                     result.summary.content,
@@ -258,12 +276,14 @@ class KonsilisyumApp:
 
             if self.session.current_turn % self.config.session_config.get("auto_save_interval", 5) == 0:
                 self.session_manager.save(self.session)
+                self._logger.debug("session_saved", turn=self.session.current_turn)
 
     def _input_loop(self):
         while self._running:
             try:
                 raw = console.input("[bold green]> [/bold green]")
             except (EOFError, KeyboardInterrupt):
+                self._logger.info("shutdown_signal_received")
                 break
 
             self._handle_input(raw.strip())
@@ -272,6 +292,7 @@ class KonsilisyumApp:
         if not raw:
             return
 
+        self._logger.debug("user_input", input=raw[:100])
         parsed = parse_input(raw)
 
         if parsed.input_type == InputType.EMPTY:
@@ -289,10 +310,12 @@ class KonsilisyumApp:
             self.session.messages.append(msg)
             self.orchestrator.set_user_message(raw)
             self.session.auto_turns_since_user = 0
+            self._logger.info("user_message", turn=self.session.current_turn, length=len(raw))
             console.print(f"[bold cyan]Sen:[/bold cyan] {raw}")
             return
 
         if parsed.input_type == InputType.COMMAND:
+            self._logger.info("command_executed", command=parsed.command, args=parsed.args)
             result = asyncio.run_coroutine_threadsafe(
                 self.cmd_handler.handle(parsed.command, parsed.args),
                 self._loop,
@@ -302,6 +325,7 @@ class KonsilisyumApp:
                 console.print(result.message)
 
             if result.should_quit:
+                self._logger.info("quit_command", session_id=self.session.id if self.session else None)
                 self._running = False
                 self.session.status = SessionStatus.ENDED
                 self.session_manager.save(self.session)

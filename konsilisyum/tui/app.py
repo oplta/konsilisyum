@@ -13,6 +13,7 @@ from konsilisyum.api.keypool import KeyPool
 from konsilisyum.commands.handler import CommandHandler
 from konsilisyum.commands.parser import InputType, parse_input
 from konsilisyum.config.settings import Config
+from konsilisyum.core.logging import setup_logging
 from konsilisyum.core.memory import MemoryManager
 from konsilisyum.core.models import (
     APIKey,
@@ -27,6 +28,9 @@ from konsilisyum.core.models import (
 )
 from konsilisyum.core.orchestrator import Orchestrator
 from konsilisyum.core.session import SessionManager
+
+# Setup structured logging
+logger = setup_logging()
 
 
 class MessageLog(RichLog):
@@ -93,6 +97,7 @@ class KonsilisyumTUI(App):
         self.session_manager: SessionManager | None = None
         self._council_task: asyncio.Task | None = None
         self._initial_topic = topic
+        self._logger = logger.bind(component="KonsilisyumTUI")
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -114,6 +119,7 @@ class KonsilisyumTUI(App):
             self.query_one("#messages", MessageLog).write("[dim]Konu girin veya /load ile oturum yükleyin[/dim]")
 
     def _init_session(self):
+        self._logger.info("initializing_session", topic=self._initial_topic, provider=self.config.llm.get("provider"))
         agents = self.config.get_agents()
         api_keys = self.config.get_api_keys()
 
@@ -122,11 +128,14 @@ class KonsilisyumTUI(App):
             if fallback:
                 api_keys = [APIKey(id="fallback", key=fallback, is_pool=True)]
             else:
+                self._logger.error("no_api_keys_found")
                 self.query_one("#messages", MessageLog).write("[bold red]API anahtarı bulunamadı[/bold red]")
                 return
 
+        self._logger.info("api_keys_loaded", count=len(api_keys))
         key_pool = KeyPool(api_keys)
         api_client = self.config.get_llm_client()
+        self._logger.info("llm_client_initialized", provider=api_client.provider, model=api_client.model)
 
         self.memory = MemoryManager(
             context_window_size=self.config.memory.get("context_window_size", 8),
@@ -175,6 +184,7 @@ class KonsilisyumTUI(App):
                 continue
 
             if not self.session.active_agents:
+                self._logger.warning("no_active_agents")
                 self.query_one("#messages", MessageLog).write("[bold red]Aktif ajan kalmadı[/bold red]")
                 self.orchestrator.pause()
                 continue
@@ -182,21 +192,26 @@ class KonsilisyumTUI(App):
             try:
                 result = await self.orchestrator.execute_turn()
             except Exception as e:
+                self._logger.error("orchestrator_error", error=str(e))
                 self.query_one("#messages", MessageLog).write(f"[bold red]Hata: {e}[/bold red]")
                 self.orchestrator.pause()
                 continue
 
             if result.error == "max_auto_turns":
+                self._logger.info("max_auto_turns_reached", turn=self.session.current_turn)
                 self.query_one("#messages", MessageLog).write("[bold yellow]Maksimum otomatik tur aşıldı[/bold yellow]")
                 continue
 
             if result.error:
+                self._logger.warning("turn_error", error=result.error, turn=self.session.current_turn)
                 continue
 
             if result.message:
+                self._logger.debug("agent_message", turn=result.message.turn, speaker=result.message.speaker, length=len(result.message.content))
                 self._add_message(result.message)
 
             if result.summary:
+                self._logger.info("summary_generated", turn_range=result.summary.turn_range)
                 self.query_one("#messages", MessageLog).write(f"\n[bold]📋 Özet (Tur {result.summary.turn_range[0]}-{result.summary.turn_range[1]})[/bold]")
                 self.query_one("#messages", MessageLog).write(result.summary.content)
 
@@ -225,6 +240,7 @@ class KonsilisyumTUI(App):
             return
         event.input.value = ""
 
+        self._logger.debug("user_input", input=user_input[:100])
         parsed = parse_input(user_input)
 
         if parsed.input_type == InputType.MESSAGE:
@@ -248,14 +264,17 @@ class KonsilisyumTUI(App):
             self.session.messages.append(msg)
             self.orchestrator.set_user_message(user_input)
             self.session.auto_turns_since_user = 0
+            self._logger.info("user_message", turn=self.session.current_turn, length=len(user_input))
             self.query_one("#messages", MessageLog).write(f"[bold cyan]Sen:[/bold cyan] {user_input}")
             return
 
         if parsed.input_type == InputType.COMMAND:
+            self._logger.info("command_executed", command=parsed.command, args=parsed.args)
             result = await self.cmd_handler.handle(parsed.command, parsed.args)
             if result.message:
                 self.query_one("#messages", MessageLog).write(result.message)
             if result.should_quit:
+                self._logger.info("quit_command", session_id=self.session.id if self.session else None)
                 self.is_running = False
                 self.session.status = SessionStatus.ENDED
                 self.session_manager.save(self.session)
@@ -264,20 +283,24 @@ class KonsilisyumTUI(App):
     def action_toggle_pause(self):
         if self.session:
             if self.session.status == SessionStatus.PAUSED:
+                self._logger.info("resume")
                 self.orchestrator.resume()
                 self.query_one("#messages", MessageLog).write("[dim]▶ Akış devam ediyor[/dim]")
             else:
+                self._logger.info("pause")
                 self.orchestrator.pause()
                 self.query_one("#messages", MessageLog).write("[dim]⏸ Akış duraklatıldı[/dim]")
             self._update_sidebar()
 
     def action_request_summary(self):
         if self.session and self.orchestrator:
+            self._logger.info("summary_requested")
             asyncio.create_task(self._do_summary())
 
     async def _do_summary(self):
         summary = await self.orchestrator._generate_summary()
         if summary:
+            self._logger.info("manual_summary_generated", turn_range=summary.turn_range)
             self.query_one("#messages", MessageLog).write(f"\n[bold]📋 Özet[/bold]\n{summary.content}")
 
 
