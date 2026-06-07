@@ -226,3 +226,14 @@ async def test_cmd_load_not_found(setup):
     result = await handler.handle("load", {"file": "nonexistent-session-id"})
     assert not result.success
     assert "bulunamadi" in result.message.lower() or "yuklenemedi" in result.message.lower()
+
+
+@pytest.mark.asyncio
+async def test_repetition_detection_in_orchestrator(setup):
+    _, session, memory, orchestrator = setup
+    for i in range(5):
+        memory.add_message(Message(
+            turn=i, speaker="Atlas", content="Bu konuda yapay zeka tehlikeli olabilir",
+            speaker_type=SpeakerType.AGENT, topic="Test",
+        ))
+    assert memory.detect_repetition("Bu konuda yapay zeka tehlikeli olabilir diye dusunuyorum")

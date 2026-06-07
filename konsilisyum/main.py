@@ -237,7 +237,8 @@ class KonsilisyumApp:
                 continue
 
             if result.is_pas:
-                pass
+                if result.error == "tekrar_tespit":
+                    console.print("[dim][tekrar tespit edildi, pas gecildi][/dim]")
             elif result.message:
                 print_message(result.message, self.session.agents)
 
