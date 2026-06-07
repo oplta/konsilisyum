@@ -48,6 +48,13 @@ cd konsilisyum
 pip install -e .
 ```
 
+### Geliştirme Kurulumu
+
+```bash
+pip install -e ".[dev]"
+pytest tests/ -v
+```
+
 ### API Anahtarı
 
 `.env` dosyası oluşturun:
