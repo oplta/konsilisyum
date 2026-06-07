@@ -166,3 +166,48 @@ async def test_cmd_quit(setup):
     handler, session, _, _ = setup
     result = await handler.handle("quit")
     assert result.should_quit
+
+
+@pytest.mark.asyncio
+async def test_cmd_export_markdown(setup):
+    handler, session, _, _ = setup
+    session.messages.append(Message(
+        turn=1, speaker="Atlas", content="Test mesaji",
+        speaker_type=SpeakerType.AGENT, topic="Test konu",
+    ))
+    result = await handler.handle("export", {"format": "md"})
+    assert result.success
+    assert "Test mesaji" in result.message
+    assert "Atlas" in result.message
+
+
+@pytest.mark.asyncio
+async def test_cmd_export_jsonl(setup):
+    handler, session, _, _ = setup
+    session.messages.append(Message(
+        turn=1, speaker="Atlas", content="Test mesaji",
+        speaker_type=SpeakerType.AGENT, topic="Test konu",
+    ))
+    result = await handler.handle("export", {"format": "jsonl"})
+    assert result.success
+    assert "Test mesaji" in result.message
+    assert "Atlas" in result.message
+
+
+@pytest.mark.asyncio
+async def test_cmd_export_text(setup):
+    handler, session, _, _ = setup
+    session.messages.append(Message(
+        turn=1, speaker="Atlas", content="Test mesaji",
+        speaker_type=SpeakerType.AGENT, topic="Test konu",
+    ))
+    result = await handler.handle("export", {"format": "txt"})
+    assert result.success
+    assert "Test mesaji" in result.message
+
+
+@pytest.mark.asyncio
+async def test_cmd_export_invalid_format(setup):
+    handler, session, _, _ = setup
+    result = await handler.handle("export", {"format": "xml"})
+    assert not result.success

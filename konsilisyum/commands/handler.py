@@ -19,6 +19,7 @@ from konsilisyum.core.models import (
     UserRole,
 )
 from konsilisyum.core.orchestrator import Orchestrator
+from konsilisyum.core.session import SessionManager
 
 
 @dataclass
@@ -35,11 +36,13 @@ class CommandHandler:
         orchestrator: Orchestrator,
         memory: MemoryManager,
         key_pool: KeyPool,
+        session_manager: SessionManager | None = None,
     ):
         self.session = session
         self.orchestrator = orchestrator
         self.memory = memory
         self.key_pool = key_pool
+        self.session_manager = session_manager or SessionManager()
 
     async def handle(self, command: str, args: dict | None = None) -> CommandResult:
         args = args or {}
@@ -266,7 +269,11 @@ class CommandHandler:
         return CommandResult(True, "Karsit gorus haritasi henuz uygulanmadi (Faz 3)")
 
     async def cmd_export(self, format: str = "md") -> CommandResult:
-        return CommandResult(True, "Export henuz uygulanmadi (Faz 2)")
+        try:
+            result = self.session_manager.export(self.session, format)
+        except ValueError as e:
+            return CommandResult(False, str(e))
+        return CommandResult(True, result)
 
     async def cmd_save(self) -> CommandResult:
         return CommandResult(True, "Oturum kaydedildi (otomatik kayit aktif)")

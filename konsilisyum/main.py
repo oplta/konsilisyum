@@ -156,6 +156,7 @@ class KonsilisyumApp:
             orchestrator=self.orchestrator,
             memory=self.memory,
             key_pool=key_pool,
+            session_manager=self.session_manager,
         )
 
         self.session_manager = SessionManager(
