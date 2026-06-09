@@ -3,19 +3,22 @@ from __future__ import annotations
 import asyncio
 import random
 from dataclasses import dataclass
+from datetime import datetime
 
 from konsilisyum.api.keypool import KeyPool
 from konsilisyum.api.mistral import MistralClient
-from konsilisyum.core.errors import NoActiveAgentError
 from konsilisyum.core.memory import MemoryManager
 from konsilisyum.core.models import (
     Agent,
+    AgentStatus,
     Message,
     Session,
     SessionStatus,
     SpeakerType,
     Summary,
+    TopicMode,
 )
+
 
 SYSTEM_PROMPT_TEMPLATE = """Sen {name}'sin. Rolun: {role}.
 
@@ -64,39 +67,6 @@ Tartisma:
 
 Ozet:"""
 
-DECISIONS_PROMPT = """Asagidaki tartismadan karar taslaklari cikar.
-
-Konu: {topic}
-
-Tartisma:
-{messages}
-
-Her karar taslagini bir satirda, numaralandirarak yaz. Sadece tartismada ortaya cikan somut onerileri ve kararlari listele.
-
-Karar Taslaklari:"""
-
-ACTIONS_PROMPT = """Asagidaki tartismadan yapilacaklar listesi cikar.
-
-Konu: {topic}
-
-Tartisma:
-{messages}
-
-Her yapilacak isi bir satirda, numaralandirarak yaz. Sadece somut, uygulanabilir adimlari listele.
-
-Yapilacaklar:"""
-
-MAP_PROMPT = """Asagidaki tartismadan karsit gorus haritasi cikar.
-
-Konu: {topic}
-
-Tartisma:
-{messages}
-
-Her gorusu kisa ve net yaz. Hangi ajanin hangi gorusu savundugunu belirt.
-
-Karsit Gorus Haritasi:"""
-
 
 @dataclass
 class TurnResult:
@@ -144,7 +114,7 @@ class Orchestrator:
     def select_speaker(self) -> Agent:
         candidates = self.session.active_agents
         if not candidates:
-            raise NoActiveAgentError("Konuşacak aktif ajan yok")
+            raise RuntimeError("Konuşacak aktif ajan yok")
 
         scores: dict[str, float] = {}
         for agent in candidates:
@@ -192,13 +162,13 @@ class Orchestrator:
         context = self.memory.build_context_window()
 
         directive_parts: list[str] = []
-        topic_text = (
-            self.session.current_topic.content if self.session.current_topic else "Serbest tartisma"
-        )
+        topic_text = self.session.current_topic.content if self.session.current_topic else "Serbest tartisma"
         directive_parts.append(f"Konu: {topic_text}")
 
         if self._user_message_pending:
-            directive_parts.append(f'Kullanici bir mesaj birakti: "{self._user_message_pending}"')
+            directive_parts.append(
+                f"Kullanici bir mesaj birakti: \"{self._user_message_pending}\""
+            )
             directive_parts.append("Buna tepki ver.")
             self._user_message_pending = None
 
@@ -233,9 +203,7 @@ class Orchestrator:
             )
         except Exception as e:
             self.pause()
-            # Redact API keys from error message before returning to UI
-            error_msg = self.key_pool.mask_secrets(str(e))
-            return TurnResult(error=error_msg)
+            return TurnResult(error=self.key_pool.mask_secrets(str(e)))
 
         content = result.content
 
@@ -243,10 +211,6 @@ class Orchestrator:
         if is_pas:
             agent.last_turn = self.session.current_turn
             return TurnResult(message=None, is_pas=True)
-
-        if self.memory.detect_repetition(content):
-            agent.last_turn = self.session.current_turn
-            return TurnResult(message=None, is_pas=True, error="tekrar_tespit")
 
         if len(content.split()) > 500:
             content = " ".join(content.split()[:500]) + " [...kesildi]"
@@ -292,7 +256,9 @@ class Orchestrator:
         if not messages:
             return None
 
-        messages_text = "\n".join(f"[Tur {m.turn}] {m.speaker}: {m.content}" for m in messages)
+        messages_text = "\n".join(
+            f"[Tur {m.turn}] {m.speaker}: {m.content}" for m in messages
+        )
         topic = self.session.current_topic.content if self.session.current_topic else ""
         prompt = SUMMARY_PROMPT.format(
             topic=topic,
@@ -321,7 +287,6 @@ class Orchestrator:
         Guncelleme islemlerini paralel yaparak zaman kazanıyoruz.
         O(N_ajan * gecikme) yerine O(gecikme) sürede tamamlanıyor.
         """
-
         async def update_single_agent(agent: Agent):
             current_memory = self.memory.get_agent_memory(agent.id)
             recent = self.memory.history[-5:]
@@ -352,60 +317,3 @@ class Orchestrator:
     @property
     def summaries(self) -> list[Summary]:
         return self.memory.summaries
-
-    async def generate_decisions(self) -> str | None:
-        messages = self.session.messages[-20:]
-        if not messages:
-            return None
-        messages_text = "\n".join(
-            f"[Tur {m.turn}] {m.speaker}: {m.content}" for m in messages if not m.is_summary
-        )
-        topic = self.session.current_topic.content if self.session.current_topic else ""
-        prompt = DECISIONS_PROMPT.format(topic=topic, messages=messages_text)
-        try:
-            result = await self.api_client.complete_with_retry(
-                system_prompt="Sen bir karar cikaricisin. Turkce yanitla.",
-                user_prompt=prompt,
-                get_key=lambda: self.key_pool.get_raw_key(),
-            )
-            return result.content
-        except Exception:
-            return None
-
-    async def generate_actions(self) -> str | None:
-        messages = self.session.messages[-20:]
-        if not messages:
-            return None
-        messages_text = "\n".join(
-            f"[Tur {m.turn}] {m.speaker}: {m.content}" for m in messages if not m.is_summary
-        )
-        topic = self.session.current_topic.content if self.session.current_topic else ""
-        prompt = ACTIONS_PROMPT.format(topic=topic, messages=messages_text)
-        try:
-            result = await self.api_client.complete_with_retry(
-                system_prompt="Sen bir yapilacaklar listesi cikaricisin. Turkce yanitla.",
-                user_prompt=prompt,
-                get_key=lambda: self.key_pool.get_raw_key(),
-            )
-            return result.content
-        except Exception:
-            return None
-
-    async def generate_map(self) -> str | None:
-        messages = self.session.messages[-20:]
-        if not messages:
-            return None
-        messages_text = "\n".join(
-            f"[Tur {m.turn}] {m.speaker}: {m.content}" for m in messages if not m.is_summary
-        )
-        topic = self.session.current_topic.content if self.session.current_topic else ""
-        prompt = MAP_PROMPT.format(topic=topic, messages=messages_text)
-        try:
-            result = await self.api_client.complete_with_retry(
-                system_prompt="Sen bir gorus haritasi cikaricisin. Turkce yanitla.",
-                user_prompt=prompt,
-                get_key=lambda: self.key_pool.get_raw_key(),
-            )
-            return result.content
-        except Exception:
-            return None
