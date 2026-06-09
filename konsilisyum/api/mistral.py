@@ -42,12 +42,11 @@ class MistralClient(BaseLLMClient):
             "temperature": self.temperature,
         }
 
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.post(
-                f"{self.BASE_URL}/chat/completions",
-                headers=headers,
-                json=payload,
-            )
+        response = await self.client.post(
+            f"{self.BASE_URL}/chat/completions",
+            headers=headers,
+            json=payload,
+        )
 
         if response.status_code == 429:
             retry_after = response.headers.get("retry-after")

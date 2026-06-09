@@ -8,9 +8,11 @@ import structlog
 from structlog.typing import EventDict
 
 
+_timestamp_processor = structlog.processors.TimeStamper(fmt="iso")
+
+
 def add_timestamp(logger: logging.Logger, method_name: str, event_dict: EventDict) -> EventDict:
-    event_dict["timestamp"] = structlog.processors.TimeStamper(fmt="iso")()
-    return event_dict
+    return _timestamp_processor(logger, method_name, event_dict)
 
 
 def add_level(logger: logging.Logger, method_name: str, event_dict: EventDict) -> EventDict:

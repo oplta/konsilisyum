@@ -3,6 +3,8 @@ from __future__ import annotations
 import abc
 from dataclasses import dataclass
 
+import httpx
+
 
 @dataclass
 class CompletionResult:
@@ -73,6 +75,18 @@ class BaseLLMClient(LLMClient):
         self.max_tokens = max_tokens
         self.temperature = temperature
         self.timeout = timeout
+        self._client: httpx.AsyncClient | None = None
+
+    @property
+    def client(self) -> httpx.AsyncClient:
+        if self._client is None:
+            self._client = httpx.AsyncClient(timeout=self.timeout)
+        return self._client
+
+    async def aclose(self):
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
 
     @property
     def model(self) -> str:
