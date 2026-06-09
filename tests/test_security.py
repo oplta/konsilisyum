@@ -116,3 +116,73 @@ def test_keypool_mask_secrets_ordering():
     assert key2 not in masked
     assert "secr...long" in masked
     assert "***" in masked
+
+
+# Sentinel: Additional security tests
+
+@pytest.mark.asyncio
+async def test_mask_secrets_function():
+    k1 = APIKey(id="k1", key="sk-123456789", is_pool=True)
+    k2 = APIKey(id="k2", key="abc", is_pool=True)
+    pool = KeyPool([k1, k2])
+
+    text = "Error with key sk-123456789 and small key abc"
+    masked = pool.mask_secrets(text)
+
+    assert "sk-123456789" not in masked
+    assert "abc" not in masked
+    assert "sk-1...6789" in masked
+    assert "***" in masked
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_error_redaction():
+    key_val = "sk-secret-key-999"
+    key = APIKey(id="k1", key=key_val, is_pool=True)
+    pool = KeyPool([key])
+
+    session = Session()
+    agent = Agent(name="Atlas", role="R", goal="G", blind_spot="B", style="S", trigger="T")
+    session.agents.append(agent)
+
+    api_client = MagicMock()
+    api_client.complete_with_retry.side_effect = Exception(f"Connection failed for {key_val}")
+
+    memory = MagicMock()
+    orch = Orchestrator(session, memory, api_client, pool)
+
+    result = await orch.execute_turn()
+    assert key_val not in result.error
+    assert "sk-s...-999" in result.error
+
+
+def test_session_manager_traversal_prevention(tmp_path):
+    sm = SessionManager(sessions_dir=str(tmp_path))
+
+    with pytest.raises(ValueError, match="Gecersiz oturum ID"):
+        sm._safe_path("../evil", ".json")
+
+    with pytest.raises(ValueError, match="Gecersiz oturum ID"):
+        sm._safe_path("sub/dir", ".json")
+
+
+def test_session_manager_save_uses_safe_path(tmp_path, monkeypatch):
+    sm = SessionManager(sessions_dir=str(tmp_path))
+    session = Session(id="test-session")
+
+    # Track calls to _safe_path
+    safe_path_calls = []
+    original_safe_path = sm._safe_path
+
+    def mocked_safe_path(sid, ext):
+        safe_path_calls.append((sid, ext))
+        return original_safe_path(sid, ext)
+
+    monkeypatch.setattr(sm, "_safe_path", mocked_safe_path)
+
+    sm.save(session)
+
+    # Should be called for both .json (meta) and .jsonl (messages)
+    extensions = [call[1] for call in safe_path_calls]
+    assert ".json" in extensions
+    assert ".jsonl" in extensions
