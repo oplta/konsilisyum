@@ -88,9 +88,11 @@ export function useWebSocket(sessionId: string) {
       }
     }
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
       store.getState().setConnectionStatus('disconnected')
-      reconnectTimeoutRef.current = setTimeout(connect, 3000)
+      if (event.code !== 4004) {
+        reconnectTimeoutRef.current = setTimeout(connect, 3000)
+      }
     }
 
     ws.onerror = () => {

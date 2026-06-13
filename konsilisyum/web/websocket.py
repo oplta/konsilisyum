@@ -103,15 +103,16 @@ async def _run_council(websocket: WebSocket, orchestrator, session):
                 print(f"[WS] konuşmacı_seçildi agent={next_agent.name}", flush=True, file=sys.stderr)
                 await websocket.send_json({"type": "agent_typing", "agent": next_agent.name})
 
-                result = await orchestrator.execute_turn()
+                result = await orchestrator.execute_turn(next_agent)
                 print(f"[WS] tur tamamlandı agent={next_agent.name} error={result.error} is_pas={result.is_pas}", flush=True, file=sys.stderr)
 
                 await websocket.send_json({"type": "agent_done_typing", "agent": next_agent.name})
             except Exception as e:
-                print(f"[WS] tur_hatası: {e}", flush=True, file=sys.stderr)
+                print(f"[WS] tur_hatası agent={next_agent.name}: {e}", flush=True, file=sys.stderr)
                 import traceback
                 traceback.print_exc(file=sys.stderr)
                 try:
+                    await websocket.send_json({"type": "agent_done_typing", "agent": next_agent.name})
                     await websocket.send_json({"type": "error", "message": str(e)})
                 except Exception:
                     pass
@@ -124,12 +125,15 @@ async def _run_council(websocket: WebSocket, orchestrator, session):
                 continue
 
             if result.error == "tekrar_tespit":
+                print(f"[WS] tekrar_tespit agent={next_agent.name}", flush=True, file=sys.stderr)
                 continue
 
             if result.is_pas:
+                print(f"[WS] pas agent={next_agent.name}", flush=True, file=sys.stderr)
                 continue
 
             if result.message:
+                print(f"[WS] mesaj_gonderiliyor agent={result.message.speaker}", flush=True, file=sys.stderr)
                 await _send_agent_message(websocket, result, session)
 
             if result.summary:

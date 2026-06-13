@@ -224,12 +224,13 @@ class Orchestrator:
         directive = "\n".join(directive_parts)
         return f"{context}\n\n---\n{directive}"
 
-    async def execute_turn(self) -> TurnResult:
+    async def execute_turn(self, agent: Agent | None = None) -> TurnResult:
         if self.session.auto_turns_since_user >= self.max_auto_turns:
             self.pause()
             return TurnResult(error="max_auto_turns")
 
-        agent = self.select_speaker()
+        if agent is None:
+            agent = self.select_speaker()
 
         system_prompt = self._build_system_prompt(agent)
         user_prompt = self._build_user_prompt(agent)
