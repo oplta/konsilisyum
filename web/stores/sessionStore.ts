@@ -3,9 +3,14 @@ import { create } from 'zustand'
 export interface Agent {
   name: string
   role: string
+  goal: string
+  blind_spot: string
+  style: string
+  trigger: string
   color: string
   status: string
   turn_count: number
+  last_turn: number
 }
 
 export interface Message {
@@ -14,6 +19,8 @@ export interface Message {
   role: string
   content: string
   color: string
+  reply_to?: string | null
+  mentions?: string[]
 }
 
 interface SessionStore {

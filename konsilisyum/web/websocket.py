@@ -34,9 +34,14 @@ async def session_websocket(websocket: WebSocket, session_id: str):
             {
                 "name": a.name,
                 "role": a.role,
+                "goal": a.goal,
+                "blind_spot": a.blind_spot,
+                "style": a.style,
+                "trigger": a.trigger,
                 "color": a.color,
                 "status": a.status.value,
                 "turn_count": a.turn_count,
+                "last_turn": a.last_turn,
             }
             for a in session.agents
         ],
@@ -76,9 +81,9 @@ async def _run_council(websocket: WebSocket, orchestrator, session):
             try:
                 next_agent = orchestrator.select_speaker()
                 await websocket.send_json({"type": "agent_typing", "agent": next_agent.name})
-                
+
                 result = await orchestrator.execute_turn()
-                
+
                 await websocket.send_json({"type": "agent_done_typing", "agent": next_agent.name})
             except Exception as e:
                 await websocket.send_json({"type": "error", "message": str(e)})
@@ -97,6 +102,7 @@ async def _run_council(websocket: WebSocket, orchestrator, session):
 
             if result.message:
                 agent = result.speaker or next((a for a in session.agents if a.name == result.message.speaker), None)
+                mentioned = [a.name for a in session.agents if f"@{a.name}" in result.message.content]
                 await websocket.send_json({
                     "type": "agent_message",
                     "turn": result.message.turn,
@@ -104,6 +110,8 @@ async def _run_council(websocket: WebSocket, orchestrator, session):
                     "role": agent.role if agent else "",
                     "content": result.message.content,
                     "color": agent.color if agent else "#ffffff",
+                    "reply_to": result.message.reply_to,
+                    "mentions": mentioned,
                 })
 
             if result.summary:
@@ -157,9 +165,14 @@ async def _listen_commands(websocket: WebSocket, cmd_handler, orchestrator, sess
                         {
                             "name": a.name,
                             "role": a.role,
+                            "goal": a.goal,
+                            "blind_spot": a.blind_spot,
+                            "style": a.style,
+                            "trigger": a.trigger,
                             "color": a.color,
                             "status": a.status.value,
                             "turn_count": a.turn_count,
+                            "last_turn": a.last_turn,
                         }
                         for a in session.agents
                     ],

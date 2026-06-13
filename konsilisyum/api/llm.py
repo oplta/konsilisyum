@@ -14,6 +14,7 @@ class CompletionResult:
     tokens_in: int
     tokens_out: int
     model: str
+    finish_reason: str = "stop"
 
 
 class LLMError(KonsilisyumError):
@@ -69,7 +70,7 @@ class BaseLLMClient(LLMClient):
     def __init__(
         self,
         model: str,
-        max_tokens: int = 300,
+        max_tokens: int = 4096,
         temperature: float = 0.7,
         timeout: float = 30.0,
     ):

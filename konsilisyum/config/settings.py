@@ -21,7 +21,7 @@ DEFAULT_CONFIG = {
     "llm": {
         "provider": "mistral",
         "model": "mistral-small-latest",
-        "max_tokens": 300,
+        "max_tokens": 4096,
         "temperature": 0.7,
     },
     "memory": {

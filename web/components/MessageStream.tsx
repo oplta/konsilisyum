@@ -5,7 +5,7 @@ import { useSessionStore } from '@/hooks/useWebSocket'
 import MessageCard from './MessageCard'
 
 export default function MessageStream() {
-  const { messages, typingAgent, systemMessage, userScrolledUp, setUserScrolledUp } =
+  const { messages, typingAgent, systemMessage, userScrolledUp, setUserScrolledUp, agents } =
     useSessionStore()
   const containerRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -43,36 +43,57 @@ export default function MessageStream() {
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="h-full overflow-y-auto px-6 py-4 space-y-3 scroll-smooth"
+        className="h-full overflow-y-auto px-8 py-6 space-y-4 scroll-smooth"
       >
         {messages.length === 0 && !typingAgent && (
           <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="text-4xl mb-4 animate-pulse">🏛️</div>
-              <p className="text-parchment/30 font-serif italic">
-                Tartışma başlıyor...
+            <div className="text-center slide-up">
+              <div className="text-6xl mb-6 opacity-30 animate-pulse">🏛️</div>
+              <p className="font-display text-xl text-parchment/40 tracking-wide mb-2">
+                Tartışma Başlıyor
               </p>
-              <p className="text-parchment/20 font-serif text-xs mt-2">
-                Ajanlar hazırlanıyor
+              <p className="font-body text-parchment/25 text-sm italic">
+                Ajanlar toplanıyor ve hazırlanıyor...
               </p>
+              <div className="mt-8 flex items-center justify-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-gold/40 animate-bounce" style={{ animationDelay: '0s' }} />
+                <span className="w-2 h-2 rounded-full bg-gold/40 animate-bounce" style={{ animationDelay: '0.2s' }} />
+                <span className="w-2 h-2 rounded-full bg-gold/40 animate-bounce" style={{ animationDelay: '0.4s' }} />
+              </div>
             </div>
           </div>
         )}
 
         {messages.map((msg, i) => (
-          <MessageCard key={`${msg.turn}-${msg.speaker}-${i}`} message={msg} />
+          <MessageCard 
+            key={`${msg.turn}-${msg.speaker}-${i}`} 
+            message={msg} 
+            isNew={i === messages.length - 1}
+          />
         ))}
 
         {typingAgent && (
-          <div className="flex items-center gap-2 px-4 py-3 text-gold/60 text-sm font-serif bg-navy-800/30 rounded-lg border border-gold/10">
-            <span className="animate-pulse">▌</span>
-            <span>{typingAgent} düşünüyor...</span>
+          <div className="flex items-center gap-3 px-6 py-4 text-gold/70 text-sm font-body bg-navy-800/40 rounded-xl border border-gold/15 backdrop-blur-sm slide-up">
+            <div className="flex gap-1">
+              <span className="w-2 h-2 rounded-full bg-gold/60 animate-bounce" style={{ animationDelay: '0s' }} />
+              <span className="w-2 h-2 rounded-full bg-gold/60 animate-bounce" style={{ animationDelay: '0.15s' }} />
+              <span className="w-2 h-2 rounded-full bg-gold/60 animate-bounce" style={{ animationDelay: '0.3s' }} />
+            </div>
+            <span className="font-display tracking-wide">
+              {typingAgent}
+            </span>
+            <span className="text-parchment/40 italic">
+              {agents.find(a => a.name === typingAgent)?.style || 'düşünüyor...'}
+            </span>
           </div>
         )}
 
         {systemMessage && (
-          <div className="mx-4 p-3 bg-gold/5 border border-gold/20 rounded-lg text-sm text-gold/80 font-serif">
-            {systemMessage}
+          <div className="mx-6 p-5 bg-gold/5 border border-gold/25 rounded-xl text-sm text-gold/90 font-body slide-up backdrop-blur-sm">
+            <div className="flex items-start gap-3">
+              <span className="text-lg">💬</span>
+              <span>{systemMessage}</span>
+            </div>
           </div>
         )}
 
@@ -82,9 +103,10 @@ export default function MessageStream() {
       {newMessageCount > 0 && userScrolledUp && (
         <button
           onClick={scrollToBottom}
-          className="absolute bottom-4 right-4 bg-gold/20 text-gold border border-gold/30 rounded-full px-4 py-2 text-sm font-serif hover:bg-gold/30 transition-all shadow-lg"
+          className="absolute bottom-6 right-6 btn-gold rounded-full px-5 py-3 shadow-2xl slide-up flex items-center gap-2"
         >
-          ↓ {newMessageCount} yeni mesaj
+          <span>↓</span>
+          <span>{newMessageCount} yeni mesaj</span>
         </button>
       )}
     </div>

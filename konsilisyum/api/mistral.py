@@ -7,6 +7,9 @@ from konsilisyum.api.llm import (
     RateLimitError,
     ServerError,
 )
+from konsilisyum.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class MistralClient(BaseLLMClient):
@@ -15,7 +18,7 @@ class MistralClient(BaseLLMClient):
     def __init__(
         self,
         model: str = "mistral-small-latest",
-        max_tokens: int = 300,
+        max_tokens: int = 4096,
         temperature: float = 0.7,
     ):
         super().__init__(model, max_tokens, temperature)
@@ -60,12 +63,23 @@ class MistralClient(BaseLLMClient):
             raise ServerError(f"Beklenmeyen hata: {response.status_code} - {response.text}")
 
         data = response.json()
-        content = data["choices"][0]["message"]["content"]
+        choice = data["choices"][0]
+        content = choice["message"]["content"]
+        finish_reason = choice.get("finish_reason", "stop")
         usage = data.get("usage", {})
+
+        if finish_reason == "length":
+            logger.warning(
+                "yanit_kesildi",
+                model=self.model,
+                tokens_out=usage.get("completion_tokens", 0),
+                max_tokens=self.max_tokens,
+            )
 
         return CompletionResult(
             content=content.strip(),
             tokens_in=usage.get("prompt_tokens", 0),
             tokens_out=usage.get("completion_tokens", 0),
             model=data.get("model", self.model),
+            finish_reason=finish_reason,
         )

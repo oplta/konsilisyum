@@ -11,11 +11,18 @@ import BackstagePanel from '@/components/BackstagePanel'
 function LoadingScreen() {
   return (
     <div className="h-screen flex flex-col items-center justify-center bg-navy-900">
-      <div className="text-center">
-        <h1 className="font-serif text-3xl tracking-widest text-gold uppercase mb-4 animate-pulse">
-          Konsilisyum
+      <div className="text-center slide-up">
+        <div className="text-6xl mb-6 opacity-40">🏛️</div>
+        <h1 className="font-display text-4xl tracking-wider text-gold mb-3">
+          KONSİLİSYUM
         </h1>
-        <p className="text-parchment/40 font-serif italic">Bağlanılıyor...</p>
+        <div className="gold-divider my-6 max-w-xs mx-auto" />
+        <p className="text-parchment/50 font-body italic mb-6">Konsil toplanıyor...</p>
+        <div className="flex items-center justify-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-gold/50 animate-bounce" style={{ animationDelay: '0s' }} />
+          <span className="w-2 h-2 rounded-full bg-gold/50 animate-bounce" style={{ animationDelay: '0.2s' }} />
+          <span className="w-2 h-2 rounded-full bg-gold/50 animate-bounce" style={{ animationDelay: '0.4s' }} />
+        </div>
       </div>
     </div>
   )
@@ -24,11 +31,12 @@ function LoadingScreen() {
 function ErrorScreen({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div className="h-screen flex flex-col items-center justify-center bg-navy-900">
-      <div className="text-center max-w-md">
-        <div className="text-4xl mb-4">⚠️</div>
-        <h2 className="font-serif text-xl text-gold mb-2">Bağlantı Hatası</h2>
-        <p className="text-parchment/60 font-serif text-sm mb-6">{message}</p>
-        <button onClick={onRetry} className="btn-gold">
+      <div className="text-center max-w-md slide-up">
+        <div className="text-5xl mb-6">⚠️</div>
+        <h2 className="font-display text-2xl text-gold mb-3 tracking-wide">Bağlantı Hatası</h2>
+        <div className="gold-divider my-4 max-w-xs mx-auto" />
+        <p className="text-parchment/60 font-body text-sm mb-8">{message}</p>
+        <button onClick={onRetry} className="btn-gold px-8 py-3">
           Tekrar Dene
         </button>
       </div>

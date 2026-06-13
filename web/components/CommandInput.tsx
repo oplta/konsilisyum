@@ -84,19 +84,19 @@ export default function CommandInput({ onSendMessage, onSendCommand }: CommandIn
           onKeyDown={handleKeyDown}
           placeholder="Mesaj yaz veya /komut gir..."
           className={`input-classic w-full pr-20 ${
-            isCommand ? 'border-gold/40 text-gold' : ''
+            isCommand ? 'border-gold/50 text-gold' : ''
           }`}
         />
         {isCommand && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gold/50 font-mono">
-            komut
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gold/60 font-display tracking-wider">
+            KOMUT
           </span>
         )}
       </div>
       <button
         onClick={handleSubmit}
         disabled={!value.trim()}
-        className="btn-gold whitespace-nowrap disabled:opacity-30 disabled:cursor-not-allowed"
+        className="btn-gold whitespace-nowrap disabled:opacity-30 disabled:cursor-not-allowed px-5"
       >
         Gönder
       </button>

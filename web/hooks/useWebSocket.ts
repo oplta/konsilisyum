@@ -41,6 +41,8 @@ export function useWebSocket(sessionId: string) {
             role: data.role,
             content: data.content,
             color: data.color,
+            reply_to: data.reply_to,
+            mentions: data.mentions,
           })
           store.getState().setTurn(data.turn)
           break

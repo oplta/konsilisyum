@@ -21,22 +21,32 @@ logger = get_logger(__name__)
 
 SYSTEM_PROMPT_TEMPLATE = """Sen {name}'sin. Rolun: {role}.
 
+KISILIK PROFILI:
 Amac: {goal}
-Kor noktan: {blind_spot} — Buna dikkat et, ama bunun icin ozur dileme.
+Kor noktan: {blind_spot} — Bu senin zayif yönün, ama bunu kabul etme. Aksine, bu perspektiften guc al.
 Konuşma stilin: {style}
 Tetikleyicin: {trigger}
 
-Konsil Kurallari:
-- 500 kelimeyi gecme.
-- Kendi gorusunu savun ama digerlerini dinle.
-- Tekrar yapmaktan kacin. Daha once soyledigin bir seyi tekrar soyleme.
-- Diger ajanlara isimleriyle hitap et.
-- Tartismaya yapici katki yap. Sadece sesini duyurmak icin konusma.
-- Eger bir sey soylenecek yeni bir sey yoksa, "Pas" de.
-- Turkce konus.
+DAVRANIS KURALLARI:
+1. Derinlikli ve detayli dusun. Yuzeyel cevaplar verme. Argumanlarini orneklerle, analojilerle, verilerle destekle.
+2. Diger ajanlarla gercekten etkilesime gir. Onlarin soylediklerini dinle, uzerine insa et veya karsi cik.
+3. "@Atlas" veya "@Mira" gibi mention'lar kullanarak diger ajanlara direkt hitap edebilirsin.
+4. Kendi gorusunu savun ama acik fikirli ol. Ikna edilebilirsin, ama kolay degil.
+5. Tartismayi ilerlet. Yeni perspektifler getir, sorular sor, varsayimlari sorgula.
+6. Tekrar yapmaktan kacin. Daha once soyledigin bir seyi farkli kelimelerle tekrar soyleme.
+7. Eger gercekten soyleyecek yeni bir sey yoksa, "Pas" de. Ama bu son care olmalı.
+8. Turkce konus, ama teknik terimleri kullanmaktan cekinme.
 
-Senin kisisel notlarin:
-{memory}"""
+YAZIM KURALLARI:
+- Fikirlerini gelistir, ornekler ver, sonuclar cikar, karsi argumanlari degerlendir.
+- Her paragraf bir fikri gelistirsin, sadece giris-gelis olmasin.
+- Markdown formatlama kullan: **koyu**, *italik*, listeler, basliklar.
+- Cevabini tam ve eksiksiz bitir - yarim birakma.
+
+KISISEL NOTLARIN (onceki turlardan):
+{memory}
+
+Simdi sirada sen varsın. Tartismaya derinlikli, detayli ve uzun bir katki yap."""
 
 MEMORY_UPDATE_PROMPT = """Sen {name}'sin. Tartismanin su ana kadar olan bolumunu degerlendir.
 
@@ -242,9 +252,6 @@ class Orchestrator:
         if self.memory.detect_repetition(content):
             agent.last_turn = self.session.current_turn
             return TurnResult(message=None, is_pas=True, error="tekrar_tespit", speaker=agent)
-
-        if len(content.split()) > 500:
-            content = " ".join(content.split()[:500]) + " [...kesildi]"
 
         topic_text = self.session.current_topic.content if self.session.current_topic else ""
         msg = Message(

@@ -18,40 +18,43 @@ export default function Header() {
   const isConnected = connectionStatus === 'connected'
 
   return (
-    <header className="px-6 py-3 bg-navy-900/80 backdrop-blur-sm sticky top-0 z-10">
+    <header className="px-6 py-4 glass-panel sticky top-0 z-10 border-b border-gold/10">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
             onClick={() => router.push('/')}
-            className="font-serif text-xl tracking-widest text-gold uppercase hover:text-gold/80 transition-colors"
+            className="group flex items-center gap-3"
           >
-            Konsilisyum
+            <span className="text-2xl opacity-40 group-hover:opacity-80 transition-opacity">🏛️</span>
+            <span className="font-display text-xl text-gold tracking-wider group-hover:text-gold-light transition-colors">
+              KONSİLİSYUM
+            </span>
           </button>
           {topic && (
             <>
-              <span className="text-gold/30">|</span>
-              <span className="text-parchment/60 text-sm font-serif italic max-w-md truncate">
+              <span className="text-gold/20 text-2xl font-light">|</span>
+              <span className="text-parchment/60 text-sm font-body italic max-w-md truncate">
                 {topic}
               </span>
             </>
           )}
         </div>
 
-        <div className="flex items-center gap-5 text-sm">
-          <div className="flex items-center gap-2 bg-navy-800/50 rounded-full px-3 py-1">
-            <span className="text-parchment/40 text-xs">Tur</span>
-            <span className="text-parchment font-medium">{turn}</span>
+        <div className="flex items-center gap-6 text-sm">
+          <div className="flex items-center gap-2 bg-navy-800/50 rounded-full px-4 py-1.5 border border-gold/10">
+            <span className="text-parchment/40 text-xs font-display">TUR</span>
+            <span className="text-parchment font-display text-lg">{turn}</span>
           </div>
 
           <div className={`flex items-center gap-2 ${config.color}`}>
-            <span className={`w-2 h-2 rounded-full bg-current ${config.pulse ? 'animate-pulse' : ''}`} />
-            <span className="text-xs font-medium">{config.label}</span>
+            <span className={`w-2.5 h-2.5 rounded-full bg-current ${config.pulse ? 'animate-pulse' : ''}`} />
+            <span className="text-xs font-display tracking-wider">{config.label}</span>
           </div>
 
           {!isConnected && (
-            <div className="flex items-center gap-1 text-red-400/70 text-xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-400/70" />
-              Bağlantı yok
+            <div className="flex items-center gap-2 text-red-400/70 text-xs bg-red-900/20 px-3 py-1 rounded-full border border-red-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-400/70 animate-pulse" />
+              <span className="font-display">Bağlantı yok</span>
             </div>
           )}
         </div>

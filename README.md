@@ -4,11 +4,11 @@
 
 **Yaşayan Fikir Meclisi**
 
-Terminalde çalışan, birden fazla yapay zeka ajanının kendi aralarında tartıştığı,  
+Terminalde ve web'de çalışan, birden fazla yapay zeka ajanının kendi aralarında tartıştığı,
 senin istediğin anda dahil olup yön verebildiğin canlı bir fikir meclisi.
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-151%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-166%20passed-brightgreen.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-green.svg)]()
 
 </div>
@@ -22,6 +22,8 @@ Konsilisyum tek bir chatbot değil. Farklı bakış açılarına, kişiliklere v
 - **Atlas** stratejik düşünür, her fikri eylem planına çevirir
 - **Mira** etikçi, insan etkisini ve uzun vadeli riskleri sorgular
 - **Kaan** şüpheci, boş varsayımları deler, kanıt ister
+- **Nova** inovasyon uzmanı, yaratıcı çözümler ve geleceğe dönük teknolojiler önerir
+- **Zeynep** sosyolog, toplumsal etkileri ve kültürel dinamikleri analiz eder
 
 Bir konu veriyorsun → ajanlar kendi aralarında tartışmaya başlıyor → sen istediğin an girip yön veriyorsun.
 
@@ -29,14 +31,17 @@ Bir konu veriyorsun → ajanlar kendi aralarında tartışmaya başlıyor → se
 
 ## ✨ Özellikler
 
-- **🤖 Çoklu Ajan Sistemi** — Her biri farklı kişilikte 3+ yapay zeka ajanı
+- **🤖 5 Ajan Sistemi** — Atlas, Mira, Kaan, Nova, Zeynep — her biri farklı kişilikte
+- **🌐 Web Arayüzü** — Next.js + FastAPI ile Klasik Meclis temalı modern arayüz
 - **🔄 Otomatik Tartışma Akışı** — Duraklatana kadar kendi kendine sürer
 - **🗣 Kullanıcı Katılımı** — Her an mesaj yaz, ajana sor, konu değiştir
 - **🧠 Ajan Bazlı Hafıza** — Her ajanın kendi notları, persona erimesi önlenir
 - **🎭 Orkestratör** — Akıllı konuşmacı seçimi, tekrar algılama, konu takibi
 - **💾 Oturum Kaydı** — JSONL formatında kalıcı kayıt
+- **📝 Markdown Desteği** — Mesajlarda zengin formatlama
 - **⚡ 28+ Terminal Komutu** — Ajan yönetimi, özet, dışa aktarma ve daha fazlası
 - **🔑 Çoklu API Anahtarı** — Otomatik rotasyon, rate limit koruması
+- **🔗 WebSocket** — Gerçek zamanlı iletişim, otomatik yeniden bağlanma
 
 ---
 
@@ -48,11 +53,11 @@ cd konsilisyum
 pip install -e .
 ```
 
-### Geliştirme Kurulumu
+### Frontend Kurulumu
 
 ```bash
-pip install -e ".[dev]"
-pytest tests/ -v
+cd web
+npm install
 ```
 
 ### API Anahtarı
@@ -73,6 +78,20 @@ MISTRAL_API_KEYS=tek_bir_anahtar
 ---
 
 ## 💻 Kullanım
+
+### Web Arayüzü
+
+```bash
+# Backend
+uvicorn konsilisyum.web.app:app --port 8000
+
+# Frontend (ayrı terminal)
+cd web && npm run dev
+```
+
+Tarayıcıda http://localhost:3000 adresine gidin.
+
+### Terminal (CLI)
 
 ```bash
 # Konu ile başlat
@@ -96,6 +115,12 @@ konsilisyum --tui "Yapay zeka eğitimi geleceği nasıl şekillendirir?"
 
 [Tur 2] Kaan (Şüpheci):
   Mira, "güç asimetrisi" lafını havada bırakma. Çözümün ne?
+
+[Tur 3] Nova (İnovasyon Uzmanı):
+  Dijital okuryazarlık programları ile toplumsal dönüşüm...
+
+[Tur 4] Zeynep (Sosyolog):
+  Teknoloji adoption sürecinde kültürel direnç unsurları...
 ```
 
 ---
@@ -173,19 +198,43 @@ konsilisyum/
 │   └── errors.py          # Hata sınıfları hiyerarşisi
 ├── api/
 │   ├── mistral.py         # Mistral AI API istemcisi + retry
+│   ├── llm.py             # Ortak LLM arayüzü + hata sınıfları
 │   └── keypool.py         # Çoklu anahtar havuzu + rotasyon
 ├── commands/
 │   ├── parser.py          # Komut ayrıştırıcı
 │   └── handler.py         # 28 komut işleyici
 ├── config/
 │   ├── settings.py        # YAML + .env yapılandırma
-│   └── defaults.py        # Varsayılan ajan tanımları
+│   └── defaults.py        # Varsayılan ajan tanımları (5 ajan)
+├── web/
+│   ├── app.py             # FastAPI uygulaması
+│   ├── routes.py          # REST API endpointleri
+│   ├── websocket.py       # WebSocket handler
+│   └── schemas.py         # Pydantic şemaları
 ├── tui/
 │   ├── app.py             # Textual TUI uygulaması
 │   └── theme.tcss         # TUI stil dosyası
-├── bootstrap.py           # CLI ve TUI için ortak başlatma katmanı
+├── bootstrap.py           # CLI, TUI ve Web için ortak başlatma
 ├── main.py                # CLI giriş noktası
-└── tests/                 # 151 test
+└── tests/                 # 166 test
+
+web/                       # Next.js Frontend
+├── app/
+│   ├── page.tsx           # Ana sayfa (konu seçimi)
+│   └── session/[id]/      # Oturum sayfası
+├── components/
+│   ├── AgentCards.tsx      # Ajan kartları
+│   ├── MessageStream.tsx   # Mesaj akışı
+│   ├── MessageCard.tsx     # Mesaj kartı (Markdown)
+│   ├── BackstagePanel.tsx  # Kontrol paneli
+│   ├── QuickCommands.tsx   # Hızlı komutlar
+│   └── Header.tsx          # Üst bilgi çubuğu
+├── hooks/
+│   └── useWebSocket.ts    # WebSocket hook'u
+├── stores/
+│   └── sessionStore.ts    # Zustand state yönetimi
+└── lib/
+    └── api.ts             # REST API yardımcıları
 ```
 
 ---
@@ -206,6 +255,8 @@ pytest tests/ -v
 | **Atlas** | Stratejist | Fikirleri eylem planına çevirmek | İnsan maliyetini küçümseme |
 | **Mira** | Etikçi | İnsan etkisini ve riskleri sorgulamak | Aşırı temkinlilik |
 | **Kaan** | Şüpheci | Boş varsayımları delmek | Yapıcı olmadan eleştirmek |
+| **Nova** | İnovasyon Uzmanı | Yaratıcı çözümler önermek | Pratik zorlukları göz ardı etme |
+| **Zeynep** | Sosyolog | Toplumsal etkileri analiz etmek | Bireysel ajansı hafife alma |
 
 `/spawn` ile yeni ajan ekleyebilir, `/edit` ile değiştirebilirsin.
 
@@ -215,12 +266,11 @@ pytest tests/ -v
 
 | Fren | Değer |
 |------|-------|
-| Maksimum mesaj uzunluğu | 500 kelime |
 | Bağlam penceresi | Son 8 mesaj + özet |
 | Otomatik özet aralığı | Her 20 tur |
 | Maksimum otomatik tur | 50 (sonra duraklar) |
 | Tekrar eşiği | %70 benzerlik → pas |
-| Token limiti | İstem başına 300 token |
+| Token limiti | İstem başına 4096 token |
 
 ---
 
@@ -237,7 +287,8 @@ pytest tests/ -v
 - [x] **Faz 2:** Orkestratör iyileştirme, Textual TUI, oturum yükleme
 - [x] **Faz 3:** Karar taslakları, yapılacaklar listesi, dışa aktarma, rol sistemi
 - [x] **Faz 4:** Vektör hafıza (SQLite + numpy), API anahtarı havuzu iyileştirmeleri
-- [ ] **Faz 5:** Web arama (Tavily), gelişmiş TUI, uzun dönem hafıza
+- [x] **Faz 5:** Web arayüzü (Next.js + FastAPI), 5 ajan, WebSocket, Markdown
+- [ ] **Faz 6:** Web arama (Tavily), gelişmiş TUI, uzun dönem hafıza
 
 ---
 

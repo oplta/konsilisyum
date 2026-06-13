@@ -9,23 +9,28 @@ const config: Config = {
     extend: {
       colors: {
         navy: {
-          900: '#1a1a2e',
-          800: '#16213e',
-          700: '#0f3460',
+          900: '#0f0f1e',
+          800: '#1a1a2e',
+          700: '#252540',
         },
-        gold: '#c9a96e',
-        parchment: '#e8d5b7',
+        gold: '#d4af37',
+        'gold-light': '#f4d03f',
+        parchment: '#f5f1e8',
         atlas: '#ff6b6b',
         mira: '#4ecdc4',
         kaan: '#ffe66d',
       },
       fontFamily: {
+        display: ['Playfair Display', 'Georgia', 'serif'],
+        body: ['Source Serif 4', 'Georgia', 'serif'],
         serif: ['Georgia', 'serif'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['system-ui', 'sans-serif'],
       },
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/typography'),
+  ],
 }
 
 export default config
