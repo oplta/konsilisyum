@@ -200,6 +200,24 @@ class Summary:
     id: str = field(default_factory=lambda: str(uuid4()))
     created_at: datetime = field(default_factory=datetime.now)
 
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "content": self.content,
+            "turn_range": list(self.turn_range),
+            "key_points": self.key_points,
+            "disagreements": self.disagreements,
+            "decisions": self.decisions,
+            "created_at": self.created_at.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> Summary:
+        data = dict(data)
+        data["turn_range"] = tuple(data["turn_range"])
+        data["created_at"] = datetime.fromisoformat(data["created_at"])
+        return cls(**data)
+
 
 @dataclass
 class Session:

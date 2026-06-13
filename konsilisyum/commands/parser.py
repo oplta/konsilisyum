@@ -72,7 +72,7 @@ def parse_input(raw: str) -> ParsedInput:
         )
 
     cmd_def = COMMANDS[cmd_name]
-    args = _parse_args(cmd_name, cmd_def["params"], cmd_body)
+    args = _parse_args(cmd_name, list(cmd_def["params"]), cmd_body)
 
     return ParsedInput(
         input_type=InputType.COMMAND,

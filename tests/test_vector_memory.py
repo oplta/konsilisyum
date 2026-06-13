@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from konsilisyum.core.vector_memory import VectorMemory, VectorSearchResult
+from konsilisyum.core.vector_memory import VectorMemory
 
 
 class TestVectorMemory:
@@ -21,6 +21,7 @@ class TestVectorMemory:
             vec = np.zeros(10, dtype=np.float32)
             vec[len(text) % 10] = 1.0
             return vec.tolist()
+
         return _embed
 
     @pytest.mark.asyncio
@@ -29,7 +30,18 @@ class TestVectorMemory:
         await vm.add_message("m2", "s1", "Mira", "Ethics matter", mock_embed_fn)
 
         # Search with query matching first message length
-        query = [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]  # len("Strategy is key") = 15, 15 % 10 = 5
+        query = [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+        ]  # len("Strategy is key") = 15, 15 % 10 = 5
         results = vm.search(query, top_k=2, min_similarity=0.5)
         assert len(results) >= 1
 
@@ -38,7 +50,18 @@ class TestVectorMemory:
         await vm.add_message("m1", "session-a", "Atlas", "Content A", mock_embed_fn)
         await vm.add_message("m2", "session-b", "Mira", "Content B", mock_embed_fn)
 
-        query = [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # len("Content A") = 9, 9 % 10 = 9 -> wait, len("Content A")=9
+        query = [
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+        ]  # len("Content A") = 9, 9 % 10 = 9 -> wait, len("Content A")=9
         # Let's use a more reliable approach
         query = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # index 0
         results = vm.search(query, session_id="session-a", min_similarity=0.0)

@@ -5,6 +5,8 @@ from dataclasses import dataclass
 
 import httpx
 
+from konsilisyum.core.errors import KonsilisyumError
+
 
 @dataclass
 class CompletionResult:
@@ -14,7 +16,7 @@ class CompletionResult:
     model: str
 
 
-class LLMError(Exception):
+class LLMError(KonsilisyumError):
     pass
 
 

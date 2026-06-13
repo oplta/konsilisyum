@@ -6,7 +6,6 @@ Embeddings are generated via LLM provider API.
 
 from __future__ import annotations
 
-import json
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
@@ -115,13 +114,18 @@ class VectorMemory:
             emb_vec = np.frombuffer(emb_bytes, dtype=np.float32)
             sim = self._cosine_similarity(query_vec, emb_vec)
             if sim >= min_similarity:
-                results.append((sim, VectorSearchResult(
-                    message_id=msg_id,
-                    content=content,
-                    speaker=speaker,
-                    session_id=sid,
-                    similarity=sim,
-                )))
+                results.append(
+                    (
+                        sim,
+                        VectorSearchResult(
+                            message_id=msg_id,
+                            content=content,
+                            speaker=speaker,
+                            session_id=sid,
+                            similarity=sim,
+                        ),
+                    )
+                )
 
         results.sort(key=lambda x: x[0], reverse=True)
         return [r[1] for r in results[:top_k]]
@@ -136,9 +140,7 @@ class VectorMemory:
 
     def get_stats(self) -> dict:
         """Return database statistics."""
-        total = self._conn.execute(
-            "SELECT COUNT(*) FROM embeddings"
-        ).fetchone()[0]
+        total = self._conn.execute("SELECT COUNT(*) FROM embeddings").fetchone()[0]
         sessions = self._conn.execute(
             "SELECT COUNT(DISTINCT session_id) FROM embeddings"
         ).fetchone()[0]

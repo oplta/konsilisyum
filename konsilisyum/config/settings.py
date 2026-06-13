@@ -4,8 +4,9 @@ import copy
 import os
 import re
 from pathlib import Path
+from typing import Any, cast
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from konsilisyum.api import (
     AnthropicClient,
@@ -79,12 +80,13 @@ class Config:
     def load(cls, path: str = "data/config.yaml") -> Config:
         load_env()
 
-        model = os.environ.get("MISTRAL_MODEL", "")
-        if model:
-            DEFAULT_CONFIG["llm"]["model"] = model
-
         p = Path(path)
         data = copy.deepcopy(DEFAULT_CONFIG)
+
+        model = os.environ.get("MISTRAL_MODEL", "")
+        if model:
+            cast(dict[str, Any], data["llm"])["model"] = model
+
         if p.exists():
             with open(p) as f:
                 yaml_data = yaml.safe_load(f) or {}

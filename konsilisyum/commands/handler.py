@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import cast
 
 from konsilisyum.api.keypool import KeyPool
 from konsilisyum.commands.parser import get_help_text
@@ -48,7 +49,7 @@ class CommandHandler:
         handler = getattr(self, f"cmd_{command}", None)
         if not handler:
             return CommandResult(False, f"Bilinmeyen komut: /{command}")
-        return await handler(**args)
+        return cast(CommandResult, await handler(**args))
 
     async def cmd_help(self) -> CommandResult:
         return CommandResult(True, get_help_text())
@@ -283,7 +284,11 @@ class CommandHandler:
         return CommandResult(True, result)
 
     async def cmd_save(self) -> CommandResult:
-        return CommandResult(True, "Oturum kaydedildi (otomatik kayit aktif)")
+        try:
+            self.session_manager.save(self.session)
+            return CommandResult(True, "Oturum kaydedildi.")
+        except Exception as e:
+            return CommandResult(False, f"Kayit hatasi: {e}")
 
     async def cmd_load(self, file: str = "") -> CommandResult:
         if not file:
@@ -324,7 +329,18 @@ class CommandHandler:
         )
 
     async def cmd_config(self) -> CommandResult:
-        return CommandResult(True, "Yapilandirma henuz uygulanmadi (Faz 2)")
+        orch = self.orchestrator
+        lines = [
+            "Yapilandirma:",
+            f"  LLM: {orch.api_client.model} ({orch.api_client.provider})",
+            f"  Tur gecikmesi: {orch.turn_delay}s",
+            f"  Maks otomatik tur: {orch.max_auto_turns}",
+            f"  Baglam penceresi: {self.memory.context_window_size} mesaj",
+            f"  Ozet araligi: Her {self.memory.summary_interval} tur",
+            f"  Hafiza guncelleme: Her {self.memory.memory_update_interval} tur",
+            f"  Maks ajan notu: {self.memory.max_agent_memory_items}",
+        ]
+        return CommandResult(True, "\n".join(lines))
 
     def _find_agent(self, name: str) -> Agent | None:
         name_lower = name.lower()

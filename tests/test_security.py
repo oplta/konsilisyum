@@ -1,22 +1,24 @@
-import pytest
-import os
 import shutil
-import asyncio
 from pathlib import Path
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
 from konsilisyum.api.keypool import KeyPool
-from konsilisyum.core.models import APIKey, Session, Agent
-from konsilisyum.core.session import SessionManager
 from konsilisyum.core.memory import MemoryManager
+from konsilisyum.core.models import Agent, APIKey, Session
 from konsilisyum.core.orchestrator import Orchestrator
+from konsilisyum.core.session import SessionManager
 
 
 class TestSecurity:
     def test_mask_secrets_logic(self):
-        pool = KeyPool([
-            APIKey(id="k1", key="sk-long-key-12345678"),
-            APIKey(id="k2", key="short"),
-        ])
+        pool = KeyPool(
+            [
+                APIKey(id="k1", key="sk-long-key-12345678"),
+                APIKey(id="k2", key="short"),
+            ]
+        )
 
         # Test long key masking (4+4)
         text1 = "Error: invalid key sk-long-key-12345678"
@@ -31,7 +33,7 @@ class TestSecurity:
         assert "short" not in masked2
 
         # Test multiple keys and overlapping
-        pool.keys["k3"] = APIKey(id="k3", key="sk-long-key") # Substring of k1 if I wasn't careful
+        pool.keys["k3"] = APIKey(id="k3", key="sk-long-key")  # Substring of k1 if I wasn't careful
         text3 = "Keys: sk-long-key-12345678 and sk-long-key"
         masked3 = pool.mask_secrets(text3)
         assert "sk-l...5678" in masked3
@@ -63,9 +65,11 @@ class TestSecurity:
             shutil.rmtree(test_dir)
 
     def test_report_error_sanitization(self):
-        pool = KeyPool([
-            APIKey(id="k1", key="sk-secret-key-999"),
-        ])
+        pool = KeyPool(
+            [
+                APIKey(id="k1", key="sk-secret-key-999"),
+            ]
+        )
 
         # Report error containing the key
         pool.report_error("k1", "Failed with sk-secret-key-999 at line 10")
@@ -80,7 +84,9 @@ async def test_orchestrator_masks_key_in_error():
     # Setup
     key_val = "sk-secret-123456789"
     api_key = APIKey(id="k1", key=key_val, is_pool=True)
-    agent = Agent(name="Atlas", role="R", goal="G", blind_spot="B", style="S", trigger="T", api_key_id="k1")
+    agent = Agent(
+        name="Atlas", role="R", goal="G", blind_spot="B", style="S", trigger="T", api_key_id="k1"
+    )
     session = Session(agents=[agent])
     memory = MemoryManager()
 
@@ -104,10 +110,7 @@ def test_keypool_mask_secrets_ordering():
     # Test that longer keys are masked first
     key1 = "secret_long"
     key2 = "secret"
-    pool = KeyPool([
-        APIKey(id="k1", key=key1),
-        APIKey(id="k2", key=key2)
-    ])
+    pool = KeyPool([APIKey(id="k1", key=key1), APIKey(id="k2", key=key2)])
 
     text = f"My keys are {key1} and {key2}"
     masked = pool.mask_secrets(text)
@@ -119,6 +122,7 @@ def test_keypool_mask_secrets_ordering():
 
 
 # Sentinel: Additional security tests
+
 
 @pytest.mark.asyncio
 async def test_mask_secrets_function():

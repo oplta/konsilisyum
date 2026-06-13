@@ -8,7 +8,7 @@ Terminalde çalışan, birden fazla yapay zeka ajanının kendi aralarında tart
 senin istediğin anda dahil olup yön verebildiğin canlı bir fikir meclisi.
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-55%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-151%20passed-brightgreen.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-green.svg)]()
 
 </div>
@@ -183,8 +183,9 @@ konsilisyum/
 ├── tui/
 │   ├── app.py             # Textual TUI uygulaması
 │   └── theme.tcss         # TUI stil dosyası
+├── bootstrap.py           # CLI ve TUI için ortak başlatma katmanı
 ├── main.py                # CLI giriş noktası
-└── tests/                 # 55 test
+└── tests/                 # 151 test
 ```
 
 ---
@@ -235,7 +236,8 @@ pytest tests/ -v
 - [x] **Faz 1:** Çekirdek prototip — 3 ajan, tur döngüsü, temel komutlar
 - [x] **Faz 2:** Orkestratör iyileştirme, Textual TUI, oturum yükleme
 - [x] **Faz 3:** Karar taslakları, yapılacaklar listesi, dışa aktarma, rol sistemi
-- [ ] **Faz 4:** Web arama (Tavily), vektör hafıza, gelişmiş TUI
+- [x] **Faz 4:** Vektör hafıza (SQLite + numpy), API anahtarı havuzu iyileştirmeleri
+- [ ] **Faz 5:** Web arama (Tavily), gelişmiş TUI, uzun dönem hafıza
 
 ---
 

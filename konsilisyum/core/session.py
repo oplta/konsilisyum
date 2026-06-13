@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from konsilisyum.core.errors import SessionNotFoundError
-from konsilisyum.core.models import Agent, Message, Session, SessionStatus, Topic
+from konsilisyum.core.models import Agent, Message, Session, SessionStatus, Topic, UserRole
 
 
 class SessionManager:
@@ -64,6 +64,9 @@ class SessionManager:
             current_topic=current_topic,
             current_turn=meta.get("current_turn", 0),
             auto_turns_since_user=meta.get("auto_turns_since_user", 0),
+            user_role=UserRole(meta.get("user_role", "participant")),
+            summary_interval=meta.get("summary_interval", 20),
+            max_auto_turns=meta.get("max_auto_turns", 50),
         )
         return session
 

@@ -7,30 +7,17 @@ import threading
 from rich.console import Console
 from rich.panel import Panel
 
-from konsilisyum.api.keypool import KeyPool
-from konsilisyum.commands.handler import CommandHandler
+from konsilisyum.bootstrap import AppBootstrapper
 from konsilisyum.commands.parser import InputType, parse_input
 from konsilisyum.config.settings import Config
 from konsilisyum.core.errors import AllKeysExhaustedError, NoActiveAgentError
 from konsilisyum.core.logging import setup_logging
-from konsilisyum.core.memory import MemoryManager
-from konsilisyum.core.models import (
-    Agent,
-    APIKey,
-    Message,
-    Session,
-    SessionStatus,
-    SpeakerType,
-    Topic,
-    TopicMode,
-)
-from konsilisyum.core.orchestrator import Orchestrator
-from konsilisyum.core.session import SessionManager
+from konsilisyum.core.models import Agent, Message, Session, SessionStatus, SpeakerType, Topic
 
 console = Console()
 
 # Setup structured logging
-logger = setup_logging()
+logger = setup_logging()  # type: ignore[assignment]
 
 AGENT_COLORS = {
     "Atlas": "bold red",
@@ -46,47 +33,50 @@ def get_style(speaker: str, agents: list[Agent]) -> str:
     return "bold white"
 
 
-def print_message(msg: Message, agents: list[Agent]):
+def print_message(msg: Message, agents: list[Agent], console_instance: Console | None = None):
+    out = console_instance or console
     style = get_style(msg.speaker, agents)
     if msg.speaker_type == SpeakerType.SYSTEM:
-        console.print(f"[dim][{msg.timestamp:%H:%M:%S}] SISTEM: {msg.content}[/dim]")
+        out.print(f"[dim][{msg.timestamp:%H:%M:%S}] SISTEM: {msg.content}[/dim]")
     elif msg.speaker_type == SpeakerType.USER:
-        console.print(f"[bold cyan][{msg.timestamp:%H:%M:%S}] Sen:[/bold cyan] {msg.content}")
+        out.print(f"[bold cyan][{msg.timestamp:%H:%M:%S}] Sen:[/bold cyan] {msg.content}")
     else:
         role = ""
         for a in agents:
             if a.name == msg.speaker:
                 role = f" ({a.role})"
                 break
-        console.print(
+        out.print(
             f"[{style}][{msg.timestamp:%H:%M:%S}] {msg.speaker}{role}:[/{style}] {msg.content}"
         )
 
 
-def print_welcome(session: Session):
-    console.print()
-    console.print(
+def print_welcome(session: Session, console_instance: Console | None = None):
+    out = console_instance or console
+    out.print()
+    out.print(
         Panel(
             "[bold]KONSILISYUM[/bold]\n[dim]Yasayan Fikir Meclisi[/dim]",
             border_style="bright_blue",
         )
     )
-    console.print()
-    console.print("[bold]Konsil uyeleri:[/bold]")
+    out.print()
+    out.print("[bold]Konsil uyeleri:[/bold]")
     for a in session.agents:
         status = {"active": "\u25cf", "muted": "\u25cb", "removed": "\u2717"}.get(
             a.status.value, "?"
         )
-        console.print(f"  {status} [bold]{a.name}[/bold] ({a.role}) — {a.goal}")
-    console.print()
+        out.print(f"  {status} [bold]{a.name}[/bold] ({a.role}) — {a.goal}")
+    out.print()
 
 
-def print_status_bar(session: Session):
+def print_status_bar(session: Session, console_instance: Console | None = None):
+    out = console_instance or console
     topic = session.current_topic.content if session.current_topic else "Yok"
     status_icon = "\u25cf" if session.status == SessionStatus.RUNNING else "\u25cb"
     status_text = "CALISIYOR" if session.status == SessionStatus.RUNNING else "DURAKLATILDI"
     agents = ", ".join(a.name for a in session.active_agents)
-    console.print(
+    out.print(
         f"[dim]{'─' * 60}[/dim]\n"
         f"[dim]{status_icon} {status_text} | Tur: {session.current_turn} | "
         f"Konu: {topic} | Ajanlar: {agents}[/dim]"
@@ -96,83 +86,41 @@ def print_status_bar(session: Session):
 class KonsilisyumApp:
     def __init__(self):
         self.config = Config.load()
-        self.session: Session | None = None
-        self.orchestrator: Orchestrator | None = None
-        self.memory: MemoryManager | None = None
-        self.cmd_handler: CommandHandler | None = None
-        self.session_manager: SessionManager | None = None
+        self.bootstrapper = AppBootstrapper(self.config)
+        self.session = self.bootstrapper.session
+        self.orchestrator = self.bootstrapper.orchestrator
+        self.memory = self.bootstrapper.memory
+        self.cmd_handler = self.bootstrapper.cmd_handler
+        self.session_manager = self.bootstrapper.session_manager
         self._running = False
         self._user_input_event = threading.Event()
         self._user_input_value: str | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
-        self._logger = logger.bind(component="KonsilisyumApp")
+        self._logger = logger.bind(component="KonsilisyumApp")  # type: ignore[assignment]
 
     def run(self, topic: str | None = None):
         self._logger.info(
             "starting_konsilisyum", topic=topic, provider=self.config.llm.get("provider")
         )
-        agents = self.config.get_agents()
-        api_keys = self.config.get_api_keys()
-
-        if not api_keys:
-            fallback = self.config.get_mistral_fallback_key()
-            if fallback:
-                api_keys = [APIKey(id="fallback", key=fallback, is_pool=True)]
-            else:
-                self._logger.error("no_api_keys_found", provider=self.config.llm.get("provider"))
-                console.print("[bold red]Hata: API anahtari bulunamadi.[/bold red]")
-                console.print("data/config.yaml dosyasinda api_keys ekleyin veya")
-                console.print(
-                    f"{self.config.llm.get('provider', 'mistral').upper()}_API_KEYS cevre degiskenini ayarlayin."
-                )
-                sys.exit(1)
-
-        self._logger.info("api_keys_loaded", count=len(api_keys))
-        key_pool = KeyPool(api_keys)
-
-        api_client = self.config.get_llm_client()
-        self._logger.info(
-            "llm_client_initialized", provider=api_client.provider, model=api_client.model
-        )
-
-        self.memory = MemoryManager(
-            context_window_size=self.config.memory.get("context_window_size", 8),
-            summary_interval=self.config.memory.get("summary_interval", 20),
-            memory_update_interval=self.config.memory.get("memory_update_interval", 5),
-        )
-
-        session_topic = None
-        if topic:
-            session_topic = Topic(
-                content=topic,
-                mode=TopicMode.EVOLVE,
-                created_by="kullanici",
+        if not self.bootstrapper.initialize(topic):
+            self._logger.error("no_api_keys_found", provider=self.config.llm.get("provider"))
+            console.print("[bold red]Hata: API anahtari bulunamadi.[/bold red]")
+            console.print("data/config.yaml dosyasinda api_keys ekleyin veya")
+            console.print(
+                f"{self.config.llm.get('provider', 'mistral').upper()}_API_KEYS cevre degiskenini ayarlayin."
             )
+            sys.exit(1)
 
-        self.session = Session(
-            agents=agents,
-            current_topic=session_topic,
-        )
+        self.session = self.bootstrapper.session
+        self.orchestrator = self.bootstrapper.orchestrator
+        self.memory = self.bootstrapper.memory
+        self.cmd_handler = self.bootstrapper.cmd_handler
+        self.session_manager = self.bootstrapper.session_manager
 
-        self.orchestrator = Orchestrator(
-            session=self.session,
-            memory=self.memory,
-            api_client=api_client,
-            key_pool=key_pool,
-            turn_delay=self.config.orchestrator.get("turn_delay", 2.0),
-            max_auto_turns=self.config.orchestrator.get("max_auto_turns", 50),
-        )
-
-        self.cmd_handler = CommandHandler(
-            session=self.session,
-            orchestrator=self.orchestrator,
-            memory=self.memory,
-            key_pool=key_pool,
-            session_manager=self.session_manager,
-        )
-
-        self.session_manager = SessionManager(
-            self.config.session_config.get("sessions_dir", "data/sessions")
+        self._logger.info(
+            "llm_client_initialized",
+            provider=self.bootstrapper.api_client.provider,
+            model=self.bootstrapper.api_client.model,
         )
 
         print_welcome(self.session)
@@ -308,6 +256,12 @@ class KonsilisyumApp:
 
             self._handle_input(raw.strip())
 
+    def _ensure_ready(self) -> bool:
+        if not self.session or not self.orchestrator or not self.memory or not self._loop:
+            console.print("[bold red]Hata: Oturum henuz hazir degil.[/bold red]")
+            return False
+        return True
+
     def _handle_input(self, raw: str):
         if not raw:
             return
@@ -319,6 +273,11 @@ class KonsilisyumApp:
             return
 
         if parsed.input_type == InputType.MESSAGE:
+            if not self._ensure_ready():
+                return
+            assert self.session is not None
+            assert self.memory is not None
+            assert self.orchestrator is not None
             msg = Message(
                 turn=self.session.current_turn,
                 speaker="Kullanici",
@@ -335,9 +294,15 @@ class KonsilisyumApp:
             return
 
         if parsed.input_type == InputType.COMMAND:
+            if not self._ensure_ready() or not self.cmd_handler or not self.session_manager:
+                return
+            assert self.cmd_handler is not None
+            assert self._loop is not None
+            assert self.session is not None
+            assert self.session_manager is not None
             self._logger.info("command_executed", command=parsed.command, args=parsed.args)
             result = asyncio.run_coroutine_threadsafe(
-                self.cmd_handler.handle(parsed.command, parsed.args),
+                self.cmd_handler.handle(parsed.command, parsed.args or {}),
                 self._loop,
             ).result()
 

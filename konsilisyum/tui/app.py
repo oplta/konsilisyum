@@ -8,27 +8,14 @@ from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
 from textual.widgets import Footer, Header, Input, RichLog, Static
 
-from konsilisyum.api.keypool import KeyPool
-from konsilisyum.commands.handler import CommandHandler
+from konsilisyum.bootstrap import AppBootstrapper
 from konsilisyum.commands.parser import InputType, parse_input
 from konsilisyum.config.settings import Config
 from konsilisyum.core.logging import setup_logging
-from konsilisyum.core.memory import MemoryManager
-from konsilisyum.core.models import (
-    Agent,
-    APIKey,
-    Message,
-    Session,
-    SessionStatus,
-    SpeakerType,
-    Topic,
-    TopicMode,
-)
-from konsilisyum.core.orchestrator import Orchestrator
-from konsilisyum.core.session import SessionManager
+from konsilisyum.core.models import Agent, Message, Session, SessionStatus, SpeakerType, Topic
 
 # Setup structured logging
-logger = setup_logging()
+logger = setup_logging()  # type: ignore[assignment]
 
 
 class MessageLog(RichLog):
@@ -90,14 +77,15 @@ class KonsilisyumTUI(App):
     def __init__(self, topic: str | None = None):
         super().__init__()
         self.config = Config.load()
+        self.bootstrapper = AppBootstrapper(self.config)
         self.session: Session | None = None
-        self.orchestrator: Orchestrator | None = None
-        self.memory: MemoryManager | None = None
-        self.cmd_handler: CommandHandler | None = None
-        self.session_manager: SessionManager | None = None
+        self.orchestrator = self.bootstrapper.orchestrator
+        self.memory = self.bootstrapper.memory
+        self.cmd_handler = self.bootstrapper.cmd_handler
+        self.session_manager = self.bootstrapper.session_manager
         self._council_task: asyncio.Task | None = None
         self._initial_topic = topic
-        self._logger = logger.bind(component="KonsilisyumTUI")
+        self._logger = logger.bind(component="KonsilisyumTUI")  # type: ignore[assignment]
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -126,64 +114,27 @@ class KonsilisyumTUI(App):
             topic=self._initial_topic,
             provider=self.config.llm.get("provider"),
         )
-        agents = self.config.get_agents()
-        api_keys = self.config.get_api_keys()
-
-        if not api_keys:
-            fallback = self.config.get_mistral_fallback_key()
-            if fallback:
-                api_keys = [APIKey(id="fallback", key=fallback, is_pool=True)]
-            else:
-                self._logger.error("no_api_keys_found")
-                self.query_one("#messages", MessageLog).write(
-                    "[bold red]API anahtarı bulunamadı[/bold red]"
-                )
-                return
-
-        self._logger.info("api_keys_loaded", count=len(api_keys))
-        key_pool = KeyPool(api_keys)
-        api_client = self.config.get_llm_client()
-        self._logger.info(
-            "llm_client_initialized", provider=api_client.provider, model=api_client.model
-        )
-
-        self.memory = MemoryManager(
-            context_window_size=self.config.memory.get("context_window_size", 8),
-            summary_interval=self.config.memory.get("summary_interval", 20),
-            memory_update_interval=self.config.memory.get("memory_update_interval", 5),
-        )
-
-        session_topic = None
-        if self._initial_topic:
-            session_topic = Topic(
-                content=self._initial_topic, mode=TopicMode.EVOLVE, created_by="kullanici"
+        if not self.bootstrapper.initialize(self._initial_topic):
+            self._logger.error("no_api_keys_found")
+            self.query_one("#messages", MessageLog).write(
+                "[bold red]API anahtarı bulunamadı[/bold red]"
             )
+            return
 
-        self.session = Session(agents=agents, current_topic=session_topic)
-        if session_topic:
-            self.session.topics.append(session_topic)
-
-        self.orchestrator = Orchestrator(
-            session=self.session,
-            memory=self.memory,
-            api_client=api_client,
-            key_pool=key_pool,
-            turn_delay=self.config.orchestrator.get("turn_delay", 2.0),
-            max_auto_turns=self.config.orchestrator.get("max_auto_turns", 50),
+        self._logger.info("api_keys_loaded", count=len(self.bootstrapper.api_keys))
+        self._logger.info(
+            "llm_client_initialized",
+            provider=self.bootstrapper.api_client.provider,
+            model=self.bootstrapper.api_client.model,
         )
 
-        self.cmd_handler = CommandHandler(
-            session=self.session,
-            orchestrator=self.orchestrator,
-            memory=self.memory,
-            key_pool=key_pool,
-        )
+        self.session = self.bootstrapper.session
+        self.orchestrator = self.bootstrapper.orchestrator
+        self.memory = self.bootstrapper.memory
+        self.cmd_handler = self.bootstrapper.cmd_handler
+        self.session_manager = self.bootstrapper.session_manager
 
-        self.session_manager = SessionManager(
-            self.config.session_config.get("sessions_dir", "data/sessions")
-        )
-
-        for a in agents:
+        for a in self.bootstrapper.agents:
             self.query_one("#messages", MessageLog).write(f"[dim]● {a.name} ({a.role})[/dim]")
 
     def _start_council(self):
@@ -246,6 +197,8 @@ class KonsilisyumTUI(App):
             self._update_sidebar()
 
     def _add_message(self, msg: Message):
+        if not self.session:
+            return
         agent = next((a for a in self.session.agents if a.name == msg.speaker), None)
         color = agent.color if agent else "#ffffff"
         role = f" ({agent.role})" if agent else ""
@@ -256,16 +209,17 @@ class KonsilisyumTUI(App):
         self.query_one("#messages", MessageLog).write("")
 
     def _update_sidebar(self):
-        if self.session:
-            self.query_one("#agents", AgentList).agents = self.session.agents
-            self.query_one("#topic", TopicInfo).topic = (
-                self.session.current_topic.content if self.session.current_topic else "Yok"
-            )
-            self.query_one("#topic", TopicInfo).mode = (
-                self.session.current_topic.mode.value if self.session.current_topic else "evolve"
-            )
-            self.query_one("#stats", StatsPanel).turn = self.session.current_turn
-            self.query_one("#stats", StatsPanel).status = self.session.status.value
+        if not self.session:
+            return
+        self.query_one("#agents", AgentList).agents = self.session.agents
+        self.query_one("#topic", TopicInfo).topic = (
+            self.session.current_topic.content if self.session.current_topic else "Yok"
+        )
+        self.query_one("#topic", TopicInfo).mode = (
+            self.session.current_topic.mode.value if self.session.current_topic else "evolve"
+        )
+        self.query_one("#stats", StatsPanel).turn = self.session.current_turn
+        self.query_one("#stats", StatsPanel).status = self.session.status.value
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         user_input = event.value.strip()
@@ -277,6 +231,8 @@ class KonsilisyumTUI(App):
         parsed = parse_input(user_input)
 
         if parsed.input_type == InputType.MESSAGE:
+            if not self.session:
+                return
             if not self.session.current_topic:
                 topic_obj = Topic(content=user_input, created_by="kullanici")
                 self.session.current_topic = topic_obj
@@ -286,6 +242,8 @@ class KonsilisyumTUI(App):
                 self._start_council()
                 return
 
+            if not self.memory or not self.orchestrator:
+                return
             msg = Message(
                 turn=self.session.current_turn,
                 speaker="Kullanıcı",
@@ -306,8 +264,12 @@ class KonsilisyumTUI(App):
             return
 
         if parsed.input_type == InputType.COMMAND:
+            if not self.cmd_handler or not self.session or not self.session_manager:
+                return
+            if not parsed.command:
+                return
             self._logger.info("command_executed", command=parsed.command, args=parsed.args)
-            result = await self.cmd_handler.handle(parsed.command, parsed.args)
+            result = await self.cmd_handler.handle(parsed.command, parsed.args or {})
             if result.message:
                 self.query_one("#messages", MessageLog).write(result.message)
             if result.should_quit:
@@ -320,16 +282,17 @@ class KonsilisyumTUI(App):
                 self.exit()
 
     def action_toggle_pause(self):
-        if self.session:
-            if self.session.status == SessionStatus.PAUSED:
-                self._logger.info("resume")
-                self.orchestrator.resume()
-                self.query_one("#messages", MessageLog).write("[dim]▶ Akış devam ediyor[/dim]")
-            else:
-                self._logger.info("pause")
-                self.orchestrator.pause()
-                self.query_one("#messages", MessageLog).write("[dim]⏸ Akış duraklatıldı[/dim]")
-            self._update_sidebar()
+        if not self.session or not self.orchestrator:
+            return
+        if self.session.status == SessionStatus.PAUSED:
+            self._logger.info("resume")
+            self.orchestrator.resume()
+            self.query_one("#messages", MessageLog).write("[dim]▶ Akış devam ediyor[/dim]")
+        else:
+            self._logger.info("pause")
+            self.orchestrator.pause()
+            self.query_one("#messages", MessageLog).write("[dim]⏸ Akış duraklatıldı[/dim]")
+        self._update_sidebar()
 
     def action_request_summary(self):
         if self.session and self.orchestrator:
@@ -337,6 +300,8 @@ class KonsilisyumTUI(App):
             asyncio.create_task(self._do_summary())
 
     async def _do_summary(self):
+        if not self.orchestrator:
+            return
         summary = await self.orchestrator._generate_summary()
         if summary:
             self._logger.info("manual_summary_generated", turn_range=summary.turn_range)

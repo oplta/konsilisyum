@@ -2,7 +2,6 @@
 
 import logging
 
-import pytest
 import structlog
 from structlog._config import BoundLoggerLazyProxy
 

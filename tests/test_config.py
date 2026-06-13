@@ -1,12 +1,11 @@
 """Tests for config/settings.py."""
 
 import os
-from pathlib import Path
 
 import pytest
 import yaml
 
-from konsilisyum.config.settings import Config, DEFAULT_CONFIG, load_env
+from konsilisyum.config.settings import DEFAULT_CONFIG, Config, load_env
 from konsilisyum.core.models import Agent
 
 
@@ -49,10 +48,14 @@ class TestConfig:
 
     def test_load_from_yaml(self, tmp_path, monkeypatch):
         config_file = tmp_path / "config.yaml"
-        config_file.write_text(yaml.safe_dump({
-            "llm": {"model": "gpt-4o-mini"},
-            "memory": {"context_window_size": 12},
-        }))
+        config_file.write_text(
+            yaml.safe_dump(
+                {
+                    "llm": {"model": "gpt-4o-mini"},
+                    "memory": {"context_window_size": 12},
+                }
+            )
+        )
         monkeypatch.setenv("MISTRAL_MODEL", "")
         monkeypatch.delenv("MISTRAL_API_KEYS", raising=False)
         monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
@@ -99,11 +102,20 @@ class TestConfig:
         assert agents[0].name == "Atlas"
 
     def test_get_agents_custom(self):
-        cfg = Config({
-            "agents": [
-                {"name": "Nova", "role": "Dev", "goal": "G", "blind_spot": "B", "style": "S", "trigger": "T"},
-            ]
-        })
+        cfg = Config(
+            {
+                "agents": [
+                    {
+                        "name": "Nova",
+                        "role": "Dev",
+                        "goal": "G",
+                        "blind_spot": "B",
+                        "style": "S",
+                        "trigger": "T",
+                    },
+                ]
+            }
+        )
         agents = cfg.get_agents()
         assert len(agents) == 1
         assert agents[0].name == "Nova"
@@ -121,9 +133,11 @@ class TestConfig:
     def test_get_api_keys_from_config(self, monkeypatch):
         monkeypatch.delenv("MISTRAL_API_KEYS", raising=False)
         monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
-        cfg = Config({
-            "api_keys": [{"key": "cfg-key", "pool": True}],
-        })
+        cfg = Config(
+            {
+                "api_keys": [{"key": "cfg-key", "pool": True}],
+            }
+        )
         keys = cfg.get_api_keys("mistral")
         assert len(keys) == 1
         assert keys[0].key == "cfg-key"
@@ -144,9 +158,11 @@ class TestConfig:
     def test_get_fallback_key_from_keys(self, monkeypatch):
         monkeypatch.delenv("MISTRAL_API_KEYS", raising=False)
         monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
-        cfg = Config({
-            "api_keys": [{"key": "fallback-key"}],
-        })
+        cfg = Config(
+            {
+                "api_keys": [{"key": "fallback-key"}],
+            }
+        )
         assert cfg.get_fallback_key("mistral") == "fallback-key"
 
     def test_get_fallback_key_none(self, monkeypatch):
