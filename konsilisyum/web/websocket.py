@@ -1,5 +1,6 @@
 import asyncio
 import json
+import sys
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -69,8 +70,22 @@ async def session_websocket(websocket: WebSocket, session_id: str):
         session_manager.save(session)
 
 
+async def _send_agent_message(websocket: WebSocket, result, session):
+    agent = result.speaker or next((a for a in session.agents if a.name == result.message.speaker), None)
+    mentioned = [a.name for a in session.agents if f"@{a.name}" in result.message.content]
+    await websocket.send_json({
+        "type": "agent_message",
+        "turn": result.message.turn,
+        "speaker": result.message.speaker,
+        "role": agent.role if agent else "",
+        "content": result.message.content,
+        "color": agent.color if agent else "#ffffff",
+        "reply_to": result.message.reply_to,
+        "mentions": mentioned,
+    })
+
+
 async def _run_council(websocket: WebSocket, orchestrator, session):
-    import sys
     print(f"[WS] council_basladı session={session.id}", flush=True, file=sys.stderr)
     try:
         while session.status != SessionStatus.ENDED:
@@ -79,7 +94,6 @@ async def _run_council(websocket: WebSocket, orchestrator, session):
                 continue
 
             if not session.active_agents:
-                print("[WS] aktif_ajan_yok", flush=True, file=sys.stderr)
                 await websocket.send_json({"type": "error", "message": "Aktif ajan yok"})
                 orchestrator.pause()
                 continue
@@ -101,6 +115,7 @@ async def _run_council(websocket: WebSocket, orchestrator, session):
                     await websocket.send_json({"type": "error", "message": str(e)})
                 except Exception:
                     pass
+                await asyncio.sleep(1)
                 continue
 
             if result.error == "max_auto_turns":
@@ -115,18 +130,7 @@ async def _run_council(websocket: WebSocket, orchestrator, session):
                 continue
 
             if result.message:
-                agent = result.speaker or next((a for a in session.agents if a.name == result.message.speaker), None)
-                mentioned = [a.name for a in session.agents if f"@{a.name}" in result.message.content]
-                await websocket.send_json({
-                    "type": "agent_message",
-                    "turn": result.message.turn,
-                    "speaker": result.message.speaker,
-                    "role": agent.role if agent else "",
-                    "content": result.message.content,
-                    "color": agent.color if agent else "#ffffff",
-                    "reply_to": result.message.reply_to,
-                    "mentions": mentioned,
-                })
+                await _send_agent_message(websocket, result, session)
 
             if result.summary:
                 await websocket.send_json({"type": "summary", "content": result.summary.content})
@@ -162,6 +166,11 @@ async def _listen_commands(websocket: WebSocket, cmd_handler, orchestrator, sess
                 break
 
             result = await cmd_handler.handle(cmd, args)
+
+            if cmd in ("say", "ask", "think"):
+                if session.status == SessionStatus.PAUSED:
+                    orchestrator.resume()
+                await websocket.send_json({"type": "command_result", "success": True, "message": "✓ Mesajınız iletildi. Ajanlar yanıt verecek."})
 
             if result.message:
                 await websocket.send_json({"type": "command_result", "success": result.success, "message": result.message})
