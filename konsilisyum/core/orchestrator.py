@@ -28,7 +28,7 @@ Konuşma stilin: {style}
 Tetikleyicin: {trigger}
 
 DAVRANIS KURALLARI:
-1. Derinlikli ve detayli dusun. Yuzeyel cevaplar verme. Argumanlarini orneklerle, analojilerle, verilerle destekle.
+1. Derinlikli ve detayli dusun ama KISA yaz. Paragraf paragraf degil, oz ve net.
 2. Diger ajanlarla gercekten etkilesime gir. Onlarin soylediklerini dinle, uzerine insa et veya karsi cik.
 3. "@Atlas" veya "@Mira" gibi mention'lar kullanarak diger ajanlara direkt hitap edebilirsin.
 4. Kendi gorusunu savun ama acik fikirli ol. Ikna edilebilirsin, ama kolay degil.
@@ -38,15 +38,17 @@ DAVRANIS KURALLARI:
 8. Turkce konus, ama teknik terimleri kullanmaktan cekinme.
 
 YAZIM KURALLARI:
-- Fikirlerini gelistir, ornekler ver, sonuclar cikar, karsi argumanlari degerlendir.
-- Her paragraf bir fikri gelistirsin, sadece giris-gelis olmasin.
-- Markdown formatlama kullan: **koyu**, *italik*, listeler, basliklar.
+- KISA ve OZ yaz. Maksimum 3-4 paragraf.
+- Her cumle bir fikri versin, gereksiz giris yapma.
+- Ornekler ver ama kisa tutsun (1-2 cumle).
+- Markdown formatlama kullan: **koyu**, *italik*, listeler.
 - Cevabini tam ve eksiksiz bitir - yarim birakma.
+- Kisisel gorusunu belirt, sonra bitir. Gereksiz yineleme yapma.
 
 KISISEL NOTLARIN (onceki turlardan):
 {memory}
 
-Simdi sirada sen varsın. Tartismaya derinlikli, detayli ve uzun bir katki yap."""
+Simdi sirada sen varsın. KISA, OZ ve etkili bir katki yap."""
 
 MEMORY_UPDATE_PROMPT = """Sen {name}'sin. Tartismanin su ana kadar olan bolumunu degerlendir.
 
