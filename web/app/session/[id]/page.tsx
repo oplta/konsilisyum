@@ -52,11 +52,12 @@ export default function SessionPage() {
   const [error, setError] = useState<string | null>(null)
 
   const { sendCommand, sendMessage } = useWebSocket(sessionId)
-  const { setSessionId, setSystemMessage, connectionStatus } = useSessionStore()
+  const { setSessionId, setSystemMessage, connectionStatus, reset } = useSessionStore()
 
   useEffect(() => {
+    reset()
     setSessionId(sessionId)
-  }, [sessionId, setSessionId])
+  }, [sessionId, setSessionId, reset])
 
   useEffect(() => {
     if (connectionStatus === 'connected') {

@@ -111,6 +111,7 @@ export function useWebSocket(sessionId: string) {
   }, [sendCommand])
 
   useEffect(() => {
+    store.getState().reset()
     connect()
     return () => {
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current)
