@@ -105,7 +105,18 @@ class MemoryManager:
         return "\n".join(f"- {n}" for n in notes)
 
     def update_agent_memory(self, agent_id: str, raw_notes: str):
-        lines = [line.strip().lstrip("- ").strip() for line in raw_notes.strip().split("\n") if line.strip()]
+        lines = []
+        for line in raw_notes.strip().split("\n"):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if stripped.startswith("- "):
+                stripped = stripped[2:]
+            elif stripped.startswith("-"):
+                stripped = stripped[1:]
+            stripped = stripped.strip()
+            if stripped:
+                lines.append(stripped)
         existing = self.agent_memories.get(agent_id, [])
         combined = existing + lines
         self.agent_memories[agent_id] = combined[-self.max_agent_memory_items :]

@@ -1,5 +1,5 @@
 llm:
-  max_tokens: 300
+  max_tokens: 4096
   temperature: 0.7
 
 api_keys:
@@ -12,6 +12,12 @@ api_keys:
   - id: "key-03"
     key: "${MISTRAL_KEY_03}"
     assigned: "Kaan"
+  - id: "key-04"
+    key: "${MISTRAL_KEY_04}"
+    assigned: "Nova"
+  - id: "key-05"
+    key: "${MISTRAL_KEY_05}"
+    assigned: "Zeynep"
   - id: "pool-01"
     key: "${MISTRAL_POOL_01}"
     pool: true
@@ -40,6 +46,22 @@ agents:
     style: "Sert, kisa, meydan okuyan"
     trigger: "Kanitsiz iddia gorunce baski kurar"
     color: "#ffe66d"
+
+  - name: "Nova"
+    role: "Inovasyon Uzmanı"
+    goal: "Yaratıcı çözümler ve geleceğe dönük teknolojiler önermek"
+    blind_spot: "Pratik zorlukları ve mevcut altyapı kısıtlamalarını göz ardı etme"
+    style: "Heyecanlı, vizyoner, metaforlarla dolu"
+    trigger: "Geleneksel yaklaşımlar görünce alternatifler sunar"
+    color: "#a8e6cf"
+
+  - name: "Zeynep"
+    role: "Sosyolog"
+    goal: "Toplumsal etkileri, kültürel dinamikleri ve kolektif davranışları analiz etmek"
+    blind_spot: "Bireysel ajansı ve kişisel tercihleri hafife alma"
+    style: "Akademik ama erişilebilir, örneklerle zengin"
+    trigger: "Teknoloji-toplum etkileşimi tartışılınca devreye girer"
+    color: "#ff8a5c"
 
 memory:
   context_window_size: 8

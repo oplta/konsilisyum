@@ -3,41 +3,50 @@ from __future__ import annotations
 import asyncio
 import random
 from dataclasses import dataclass
-from datetime import datetime
 
 from konsilisyum.api.keypool import KeyPool
-from konsilisyum.api.mistral import MistralClient
+from konsilisyum.api.llm import BaseLLMClient
+from konsilisyum.core.logging import get_logger
 from konsilisyum.core.memory import MemoryManager
 from konsilisyum.core.models import (
     Agent,
-    AgentStatus,
     Message,
     Session,
     SessionStatus,
     SpeakerType,
     Summary,
-    TopicMode,
 )
 
+logger = get_logger(__name__)
 
 SYSTEM_PROMPT_TEMPLATE = """Sen {name}'sin. Rolun: {role}.
 
+KISILIK PROFILI:
 Amac: {goal}
-Kor noktan: {blind_spot} — Buna dikkat et, ama bunun icin ozur dileme.
+Kor noktan: {blind_spot} — Bu senin zayif yönün, ama bunu kabul etme. Aksine, bu perspektiften guc al.
 Konuşma stilin: {style}
 Tetikleyicin: {trigger}
 
-Konsil Kurallari:
-- 500 kelimeyi gecme.
-- Kendi gorusunu savun ama digerlerini dinle.
-- Tekrar yapmaktan kacin. Daha once soyledigin bir seyi tekrar soyleme.
-- Diger ajanlara isimleriyle hitap et.
-- Tartismaya yapici katki yap. Sadece sesini duyurmak icin konusma.
-- Eger bir sey soylenecek yeni bir sey yoksa, "Pas" de.
-- Turkce konus.
+DAVRANIS KURALLARI:
+1. Derinlikli ve detayli dusun. Yuzeyel cevaplar verme. Argumanlarini orneklerle, analojilerle, verilerle destekle.
+2. Diger ajanlarla gercekten etkilesime gir. Onlarin soylediklerini dinle, uzerine insa et veya karsi cik.
+3. "@Atlas" veya "@Mira" gibi mention'lar kullanarak diger ajanlara direkt hitap edebilirsin.
+4. Kendi gorusunu savun ama acik fikirli ol. Ikna edilebilirsin, ama kolay degil.
+5. Tartismayi ilerlet. Yeni perspektifler getir, sorular sor, varsayimlari sorgula.
+6. Tekrar yapmaktan kacin. Daha once soyledigin bir seyi farkli kelimelerle tekrar soyleme.
+7. Eger gercekten soyleyecek yeni bir sey yoksa, "Pas" de. Ama bu son care olmalı.
+8. Turkce konus, ama teknik terimleri kullanmaktan cekinme.
 
-Senin kisisel notlarin:
-{memory}"""
+YAZIM KURALLARI:
+- Fikirlerini gelistir, ornekler ver, sonuclar cikar, karsi argumanlari degerlendir.
+- Her paragraf bir fikri gelistirsin, sadece giris-gelis olmasin.
+- Markdown formatlama kullan: **koyu**, *italik*, listeler, basliklar.
+- Cevabini tam ve eksiksiz bitir - yarim birakma.
+
+KISISEL NOTLARIN (onceki turlardan):
+{memory}
+
+Simdi sirada sen varsın. Tartismaya derinlikli, detayli ve uzun bir katki yap."""
 
 MEMORY_UPDATE_PROMPT = """Sen {name}'sin. Tartismanin su ana kadar olan bolumunu degerlendir.
 
@@ -67,6 +76,33 @@ Tartisma:
 
 Ozet:"""
 
+DECISIONS_PROMPT = """Asagidaki tartismadan cikan kararlari ve anlasmalari maddeler halinde listele.
+
+Konu: {topic}
+
+Tartisma:
+{messages}
+
+KARARLAR:"""
+
+ACTIONS_PROMPT = """Asagidaki tartismada belirtilen eylem maddelerini, sorumlu olarak dusunulebilecek kisilerle birlikte listele.
+
+Konu: {topic}
+
+Tartisma:
+{messages}
+
+YAPILACAKLAR:"""
+
+MAP_PROMPT = """Asagidaki tartismadaki karsit gorusleri, taraflari ve argumanlari bir harita gibi organize et.
+
+Konu: {topic}
+
+Tartisma:
+{messages}
+
+KARSIT GORUS HARITASI:"""
+
 
 @dataclass
 class TurnResult:
@@ -74,6 +110,7 @@ class TurnResult:
     is_pas: bool = False
     error: str | None = None
     summary: Summary | None = None
+    speaker: Agent | None = None
 
 
 class Orchestrator:
@@ -81,7 +118,7 @@ class Orchestrator:
         self,
         session: Session,
         memory: MemoryManager,
-        api_client: MistralClient,
+        api_client: BaseLLMClient,
         key_pool: KeyPool,
         turn_delay: float = 2.0,
         max_auto_turns: int = 50,
@@ -142,7 +179,7 @@ class Orchestrator:
 
             scores[agent.id] = score
 
-        winner_id = max(scores, key=scores.get)
+        winner_id = max(scores, key=lambda k: scores[k])
         self._pending_reply_to = None
         return next(a for a in candidates if a.id == winner_id)
 
@@ -162,13 +199,13 @@ class Orchestrator:
         context = self.memory.build_context_window()
 
         directive_parts: list[str] = []
-        topic_text = self.session.current_topic.content if self.session.current_topic else "Serbest tartisma"
+        topic_text = (
+            self.session.current_topic.content if self.session.current_topic else "Serbest tartisma"
+        )
         directive_parts.append(f"Konu: {topic_text}")
 
         if self._user_message_pending:
-            directive_parts.append(
-                f"Kullanici bir mesaj birakti: \"{self._user_message_pending}\""
-            )
+            directive_parts.append(f'Kullanici bir mesaj birakti: "{self._user_message_pending}"')
             directive_parts.append("Buna tepki ver.")
             self._user_message_pending = None
 
@@ -203,17 +240,18 @@ class Orchestrator:
             )
         except Exception as e:
             self.pause()
-            return TurnResult(error=self.key_pool.mask_secrets(str(e)))
+            return TurnResult(error=self.key_pool.mask_secrets(str(e)), speaker=agent)
 
         content = result.content
 
         is_pas = content.strip().lower() == "pas"
         if is_pas:
             agent.last_turn = self.session.current_turn
-            return TurnResult(message=None, is_pas=True)
+            return TurnResult(message=None, is_pas=True, speaker=agent)
 
-        if len(content.split()) > 500:
-            content = " ".join(content.split()[:500]) + " [...kesildi]"
+        if self.memory.detect_repetition(content):
+            agent.last_turn = self.session.current_turn
+            return TurnResult(message=None, is_pas=True, error="tekrar_tespit", speaker=agent)
 
         topic_text = self.session.current_topic.content if self.session.current_topic else ""
         msg = Message(
@@ -243,12 +281,12 @@ class Orchestrator:
         if self.memory.should_summarize(self.session.current_turn):
             summary = await self._generate_summary()
             if summary:
-                return TurnResult(message=msg, summary=summary)
+                return TurnResult(message=msg, summary=summary, speaker=agent)
 
         if self.memory.should_update_memory(self.session.current_turn):
             await self._update_agent_memories()
 
-        return TurnResult(message=msg)
+        return TurnResult(message=msg, speaker=agent)
 
     async def _generate_summary(self) -> Summary | None:
         last_turn = self.summaries[-1].turn_range[1] if self.summaries else 0
@@ -256,9 +294,7 @@ class Orchestrator:
         if not messages:
             return None
 
-        messages_text = "\n".join(
-            f"[Tur {m.turn}] {m.speaker}: {m.content}" for m in messages
-        )
+        messages_text = "\n".join(f"[Tur {m.turn}] {m.speaker}: {m.content}" for m in messages)
         topic = self.session.current_topic.content if self.session.current_topic else ""
         prompt = SUMMARY_PROMPT.format(
             topic=topic,
@@ -272,7 +308,8 @@ class Orchestrator:
                 user_prompt=prompt,
                 get_key=lambda: self.key_pool.get_raw_key(),
             )
-        except Exception:
+        except Exception as e:
+            logger.error("ozet_olusturma_hatasi", error=str(e), exc_info=True)
             return None
 
         summary = Summary(
@@ -287,6 +324,7 @@ class Orchestrator:
         Guncelleme islemlerini paralel yaparak zaman kazanıyoruz.
         O(N_ajan * gecikme) yerine O(gecikme) sürede tamamlanıyor.
         """
+
         async def update_single_agent(agent: Agent):
             current_memory = self.memory.get_agent_memory(agent.id)
             recent = self.memory.history[-5:]
@@ -307,8 +345,12 @@ class Orchestrator:
                     get_key=lambda: self.key_pool.get_raw_key(agent),
                 )
                 self.memory.update_agent_memory(agent.id, result.content)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(
+                    "ajan_hafiza_guncelleme_hatasi",
+                    agent=agent.name,
+                    error=str(e),
+                )
 
         tasks = [update_single_agent(agent) for agent in self.session.active_agents]
         if tasks:
@@ -317,3 +359,69 @@ class Orchestrator:
     @property
     def summaries(self) -> list[Summary]:
         return self.memory.summaries
+
+    async def generate_decisions(self) -> str | None:
+        """Tartismadan cikan kararlari listele."""
+        messages_text = self._build_recent_messages_text()
+        if not messages_text:
+            return None
+
+        topic = self.session.current_topic.content if self.session.current_topic else ""
+        prompt = DECISIONS_PROMPT.format(topic=topic, messages=messages_text)
+
+        try:
+            result = await self.api_client.complete_with_retry(
+                system_prompt="Sen bir tartisma analistisin. Kararlari cikar.",
+                user_prompt=prompt,
+                get_key=lambda: self.key_pool.get_raw_key(),
+            )
+            return result.content
+        except Exception as e:
+            logger.error("karar_olusturma_hatasi", error=str(e), exc_info=True)
+            return None
+
+    async def generate_actions(self) -> str | None:
+        """Tartismadaki eylem maddelerini listele."""
+        messages_text = self._build_recent_messages_text()
+        if not messages_text:
+            return None
+
+        topic = self.session.current_topic.content if self.session.current_topic else ""
+        prompt = ACTIONS_PROMPT.format(topic=topic, messages=messages_text)
+
+        try:
+            result = await self.api_client.complete_with_retry(
+                system_prompt="Sen bir eylem plani olusturucusun.",
+                user_prompt=prompt,
+                get_key=lambda: self.key_pool.get_raw_key(),
+            )
+            return result.content
+        except Exception as e:
+            logger.error("eylem_olusturma_hatasi", error=str(e), exc_info=True)
+            return None
+
+    async def generate_map(self) -> str | None:
+        """Tartismadaki karsit gorusleri haritala."""
+        messages_text = self._build_recent_messages_text()
+        if not messages_text:
+            return None
+
+        topic = self.session.current_topic.content if self.session.current_topic else ""
+        prompt = MAP_PROMPT.format(topic=topic, messages=messages_text)
+
+        try:
+            result = await self.api_client.complete_with_retry(
+                system_prompt="Sen bir gorus haritasi olusturucusun.",
+                user_prompt=prompt,
+                get_key=lambda: self.key_pool.get_raw_key(),
+            )
+            return result.content
+        except Exception as e:
+            logger.error("harita_olusturma_hatasi", error=str(e), exc_info=True)
+            return None
+
+    def _build_recent_messages_text(self) -> str:
+        messages = [m for m in self.memory.history if not m.is_summary]
+        if not messages:
+            return ""
+        return "\n".join(f"[Tur {m.turn}] {m.speaker}: {m.content}" for m in messages[-20:])

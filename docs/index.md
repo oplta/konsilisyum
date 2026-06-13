@@ -3,7 +3,7 @@
 <div align="center">
   <h1>🏛 KONSILISYUM</h1>
   <p><strong>Yaşayan Fikir Meclisi</strong></p>
-  <p>Terminalde çalışan, birden fazla yapay zeka ajanının kendi aralarında tartıştığı,<br>
+  <p>Terminalde ve web'de çalışan, birden fazla yapay zeka ajanının kendi aralarında tartıştığı,<br>
   senin istediğin anda dahil olup yön verebildiğin canlı bir fikir meclisi.</p>
 </div>
 
@@ -16,6 +16,8 @@ Konsilisyum tek bir chatbot değil. Farklı bakış açılarına, kişiliklere v
 - **Atlas** stratejik düşünür, her fikri eylem planına çevirir
 - **Mira** etikçi, insan etkisini ve uzun vadeli riskleri sorgular
 - **Kaan** şüpheci, boş varsayımları deler, kanıt ister
+- **Nova** inovasyon uzmanı, yaratıcı çözümler önerir
+- **Zeynep** sosyolog, toplumsal etkileri analiz eder
 
 Bir konu veriyorsun → ajanlar kendi aralarında tartışmaya başlıyor → sen istediğin an girip yön veriyorsun.
 
@@ -25,11 +27,17 @@ Bir konu veriyorsun → ajanlar kendi aralarında tartışmaya başlıyor → se
 
 <div class="grid cards" markdown>
 
--   :material-robot:{ .lg .middle } **Çoklu Ajan Sistemi**
+-   :material-robot:{ .lg .middle } **5 Ajan Sistemi**
 
     ---
 
-    Her biri farklı kişilikte 3+ yapay zeka ajanı
+    Atlas, Mira, Kaan, Nova, Zeynep — her biri farklı kişilikte
+
+-   :material-web:{ .lg .middle } **Web Arayüzü**
+
+    ---
+
+    Next.js + FastAPI ile Klasik Meclis temalı modern arayüz
 
 -   :material-message-text:{ .lg .middle } **Otomatik Tartışma**
 
@@ -61,17 +69,23 @@ Bir konu veriyorsun → ajanlar kendi aralarında tartışmaya başlıyor → se
 
     JSONL formatında kalıcı kayıt
 
+-   :material-language-markdown:{ .lg .middle } **Markdown Desteği**
+
+    ---
+
+    Mesajlarda zengin formatlama
+
 -   :material-key:{ .lg .middle } **Çoklu API Anahtarı**
 
     ---
 
     Otomatik rotasyon, rate limit koruması
 
--   :material-console:{ .lg .middle } **TUI Arayüzü**
+-   :material-websocket:{ .lg .middle } **WebSocket**
 
     ---
 
-    Modern terminal arayüzü, klavye kısayolları
+    Gerçek zamanlı iletişim, otomatik yeniden bağlanma
 
 </div>
 
@@ -90,18 +104,17 @@ export MISTRAL_API_KEY="sk-xxx"
 konsilisyum
 ```
 
-```text
-╭──────────────────────────────────────────╮
-│ 🏛 KONSİLİSYUM                          │
-│ Konu: Yapay zeka etiği                   │
-│                                          │
-│ [Atlas] Etik, somut kurallar dizisidir.  │
-│ [Mira]  Ama "zarar" göreceli değil mi?  │
-│ [Kaan]  Somut kural ver: karar kime ait?│
-╰──────────────────────────────────────────╯
+### Web Arayüzü
 
-> send Yardımcı otonom karar alabilir mi?
+```bash
+# Backend
+uvicorn konsilisyum.web.app:app --port 8000
+
+# Frontend (ayrı terminal)
+cd web && npm run dev
 ```
+
+Tarayıcıda http://localhost:3000 adresine gidin.
 
 ---
 

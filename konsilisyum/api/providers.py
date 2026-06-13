@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import httpx
-
 from konsilisyum.api.llm import (
     AuthError,
     BaseLLMClient,
@@ -42,12 +40,11 @@ class OpenAIClient(BaseLLMClient):
             "temperature": self.temperature,
         }
 
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.post(
-                f"{self.BASE_URL}/chat/completions",
-                headers=headers,
-                json=payload,
-            )
+        response = await self.client.post(
+            f"{self.BASE_URL}/chat/completions",
+            headers=headers,
+            json=payload,
+        )
 
         if response.status_code == 429:
             retry_after = response.headers.get("retry-after")
@@ -105,12 +102,11 @@ class AnthropicClient(BaseLLMClient):
             "messages": [{"role": "user", "content": user_prompt}],
         }
 
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.post(
-                f"{self.BASE_URL}/messages",
-                headers=headers,
-                json=payload,
-            )
+        response = await self.client.post(
+            f"{self.BASE_URL}/messages",
+            headers=headers,
+            json=payload,
+        )
 
         if response.status_code == 429:
             retry_after = response.headers.get("retry-after")
@@ -170,12 +166,11 @@ class OllamaClient(BaseLLMClient):
             "stream": False,
         }
 
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.post(
-                f"{self.base_url}/api/chat",
-                headers=headers,
-                json=payload,
-            )
+        response = await self.client.post(
+            f"{self.base_url}/api/chat",
+            headers=headers,
+            json=payload,
+        )
 
         if response.status_code >= 500:
             raise ServerError(f"Sunucu hatası: {response.status_code}")

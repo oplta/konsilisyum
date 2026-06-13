@@ -28,8 +28,8 @@ Sistem, kullanıcı durdurana kadar kendi kendine devam eder. Konular kendi kend
 
 ### Dahil olmayanlar (Faz 2+)
 
-- Uzun dönem vektör veritabanı
-- Web tarama / dış araç kullanımı
+- Web tarama / dış araç kullanımı (Tavily)
+- Gelişmiş uzun dönem vektör veritabanı (temel SQLite implementasyonu hazır)
 - Ajanların kendi kendine yeni hedef üretmesi
 - Sesli veya grafik arayüz
 - Ajanlar arası gizli mesajlaşma
@@ -316,45 +316,51 @@ Orkestratör her turda şu kararları alır:
 konsilisyum/
 ├── konsilisyum/
 │   ├── __init__.py
-│   ├── main.py              # Girdi noktası
+│   ├── bootstrap.py         # CLI ve TUI için ortak başlatma katmanı
+│   ├── main.py              # CLI giriş noktası
 │   ├── tui/
 │   │   ├── __init__.py
-│   │   ├── app.py           # Textual TUI uygulaması
-│   │   ├── widgets.py       # Özel widget'lar
-│   │   └── theme.py         # Renk ve stil
+│   │   └── app.py           # Textual TUI uygulaması ve widget'lar
 │   ├── core/
 │   │   ├── __init__.py
-│   │   ├── agent.py         # Ajan modeli ve yönetimi
-│   │   ├── orchestrator.py  # Tur mantığı ve karar verme
+│   │   ├── models.py        # Veri modelleri (Agent, Message, Session, ...)
+│   │   ├── orchestrator.py  # Tur mantığı, özet ve çıktı üretimi
 │   │   ├── memory.py        # Hafıza katmanı
+│   │   ├── vector_memory.py # Vektör hafıza (SQLite + numpy)
 │   │   ├── session.py       # Oturum yönetimi
-│   │   └── topic.py         # Konu yönetimi
+│   │   ├── logging.py       # Yapılandırılmış loglama
+│   │   └── errors.py        # Hata sınıfları
 │   ├── api/
 │   │   ├── __init__.py
+│   │   ├── llm.py           # Soyut LLM istemci arayüzü
+│   │   ├── providers.py     # OpenAI, Anthropic, Ollama istemcileri
 │   │   ├── mistral.py       # Mistral API istemcisi
-│   │   └── keypool.py       # API anahtarı havuzu ve rotasyon
+│   │   ├── keypool.py       # API anahtarı havuzu ve rotasyon
+│   │   └── embeddings.py    # Embedding üretimi
 │   ├── commands/
 │   │   ├── __init__.py
 │   │   ├── parser.py        # Komut ayrıştırıcı
 │   │   └── handler.py       # Komut işleyici
-│   ├── output/
-│   │   ├── __init__.py
-│   │   ├── summary.py       # Özet üretici
-│   │   ├── decisions.py     # Karar taslakları
-│   │   ├── actions.py       # Yapılacaklar listesi
-│   │   └── exporter.py      # Dışa aktarma
 │   └── config/
 │       ├── __init__.py
 │       ├── settings.py      # Yapılandırma yönetimi
 │       └── defaults.py      # Varsayılan ajanlar ve ayarlar
 ├── data/
 │   ├── sessions/            # Oturum kayıtları (JSONL)
+│   ├── logs/                # Log dosyaları
 │   └── config.yaml          # Yapılandırma dosyası
 ├── tests/
-│   ├── test_agent.py
-│   ├── test_orchestrator.py
-│   ├── test_memory.py
-│   └── test_commands.py
+│   ├── test_bootstrap.py
+│   ├── test_commands.py
+│   ├── test_config.py
+│   ├── test_embeddings.py
+│   ├── test_integration.py
+│   ├── test_logging.py
+│   ├── test_main.py
+│   ├── test_security.py
+│   ├── test_tui.py
+│   ├── test_unit.py
+│   └── test_vector_memory.py
 ├── pyproject.toml
 ├── README.md
 └── URUN-TANIMI.md           # Bu dosya

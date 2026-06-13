@@ -1,12 +1,16 @@
 # Mimari Genel Bakış
 
-Konsilisyum beş katmanlı bir mimariye sahiptir. Bu sayfa büyük resmi verir; detaylar ilgili sayfalara bağlanır.
+Konsilisyum altı katmanlı bir mimariye sahiptir. Bu sayfa büyük resmi verir; detaylar ilgili sayfalara bağlanır.
 
 ## Katmanlar
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│                    TUI  (Textual/Rich)                    │  ← Sunum
+│              Web UI  (Next.js + React)                    │  ← Sunum (Web)
+├──────────────────────────────────────────────────────────┤
+│              TUI  (Textual/Rich)                          │  ← Sunum (Terminal)
+├──────────────────────────────────────────────────────────┤
+│              WebSocket / REST API  (FastAPI)              │  ← İletişim
 ├──────────────────────────────────────────────────────────┤
 │              Command Handler  (28+ komut)                │  ← Etkileşim
 ├──────────────────────────────────────────────────────────┤
@@ -32,7 +36,7 @@ Tüm domain varlıklarının dataclass'ları. Saf veri, davranışsız.
 
 LLM sağlayıcılarını soyutlar. Hangi modeli kullandığını çekirdek bilmez.
 
-- `BaseLLMClient` — arayüz
+- `BaseLLMClient` — arayüz (finish_reason desteği)
 - `MistralClient`, `OpenAIClient`, `AnthropicClient`, `OllamaClient` — somut
 - `KeyPool` — API anahtarı rotasyonu ve rate limit yönetimi
 
@@ -52,9 +56,34 @@ Asıl iş mantığı:
 
 Kullanıcı komutlarını çekirdek eylemlere eşler. Her komut izole bir fonksiyondur.
 
-- `/pause`, `/resume`, `/topic`, `/add-agent`, `/export`, ...
+- `/pause`, `/resume`, `/topic`, `/spawn`, `/export`, ...
 
-### 5. Sunum Katmanı
+### 5. İletişim Katmanı
+
+**Modüller:** `konsilisyum/web/routes.py`, `websocket.py`
+
+FastAPI ile REST API ve WebSocket desteği.
+
+- `POST /api/sessions` — yeni oturum oluştur
+- `GET /api/sessions` — oturumları listele
+- `WS /ws/session/{id}` — gerçek zamanlı iletişim
+
+### 6. Sunum Katmanı
+
+#### Web (Next.js)
+
+**Modül:** `web/`
+
+Klasik Meclis temalı modern arayüz. Playfair Display + Source Serif 4 fontları.
+
+- `components/AgentCards.tsx` — 5 ajan kartı
+- `components/MessageStream.tsx` — mesaj akışı
+- `components/MessageCard.tsx` — Markdown destekli mesaj kartı
+- `components/BackstagePanel.tsx` — kontrol paneli
+- `hooks/useWebSocket.ts` — WebSocket yönetimi
+- `stores/sessionStore.ts` — Zustand state yönetimi
+
+#### Terminal (Textual)
 
 **Modül:** `konsilisyum/tui/`
 
@@ -62,7 +91,25 @@ Terminal arayüzü. Rich + Textual. Kullanıcı girişi alır, çekirdekten gele
 
 ## İstek Akışı
 
-Bir tur şu şekilde işlenir:
+### Web Akışı
+
+```
+1. Tarayıcı → POST /api/sessions
+        ↓
+2. FastAPI → AppBootstrapper.initialize()
+        ↓
+3. WebSocket bağlantısı kurulur
+        ↓
+4. session_state mesajı (5 ajan) gönderilir
+        ↓
+5. Orchestrator.execute_turn() otomatik başlar
+        ↓
+6. agent_message WebSocket ile gönderilir
+        ↓
+7. Tarayıcı mesajı render eder
+```
+
+### Terminal Akışı
 
 ```
 1. Kullanıcı prompt'a mesaj yazar
@@ -93,22 +140,6 @@ Bir tur şu şekilde işlenir:
 13. TUI yeniden render edilir
 ```
 
-## Olay Akışı
-
-Asenkron olay tabanlı bir yapı kullanılır:
-
-```python
-# asyncio event loop
-event = await queue.get()
-match event.type:
-    case EventType.AGENT_SPEAK:
-        tui.render_message(event.payload)
-    case EventType.STATUS_CHANGE:
-        tui.update_status(event.payload)
-    case EventType.SESSION_SAVED:
-        log.info("Snapshot alındı")
-```
-
 ## Veri Akışı
 
 ```
@@ -133,8 +164,11 @@ Her modülün **tek** bir işi vardır:
 | `memory.py`          | Bağlam + hafıza yönetimi       |
 | `session.py`         | Kalıcılık + export             |
 | `commands/handler.py`| Komut ayrıştırma               |
-| `commands/<cmd>.py`  | Tek bir komut                  |
+| `web/app.py`         | FastAPI uygulaması             |
+| `web/routes.py`      | REST API endpointleri          |
+| `web/websocket.py`   | WebSocket handler              |
 | `tui/`               | Render + girdi                 |
+| `web/`               | Next.js frontend               |
 
 Bu ayrım sayesinde:
 

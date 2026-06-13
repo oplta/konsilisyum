@@ -3,14 +3,16 @@ from __future__ import annotations
 import logging
 import sys
 from pathlib import Path
+from typing import Any, cast
 
 import structlog
 from structlog.typing import EventDict
 
+_timestamp_processor = structlog.processors.TimeStamper(fmt="iso")
+
 
 def add_timestamp(logger: logging.Logger, method_name: str, event_dict: EventDict) -> EventDict:
-    event_dict["timestamp"] = structlog.processors.TimeStamper(fmt="iso")()
-    return event_dict
+    return _timestamp_processor(logger, method_name, event_dict)
 
 
 def add_level(logger: logging.Logger, method_name: str, event_dict: EventDict) -> EventDict:
@@ -39,6 +41,7 @@ def setup_logging(
         structlog.processors.UnicodeDecoder(),
     ]
 
+    processor: Any
     if json_format:
         processor = structlog.processors.JSONRenderer()
     else:
@@ -80,17 +83,17 @@ def setup_logging(
 
     formatter = structlog.stdlib.ProcessorFormatter(
         processor=processor,
-        foreign_pre_chain=shared_processors,
+        foreign_pre_chain=cast(Any, shared_processors),
     )
 
     for handler in handlers:
         handler.setFormatter(formatter)
 
-    return structlog.get_logger()
+    return cast(structlog.BoundLogger, structlog.get_logger())
 
 
 def get_logger(name: str) -> structlog.BoundLogger:
-    return structlog.get_logger(name)
+    return cast(structlog.BoundLogger, structlog.get_logger(name))
 
 
 class CorrelationLogger:

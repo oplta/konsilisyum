@@ -12,8 +12,8 @@ from konsilisyum.api.mistral import MistralClient
 from konsilisyum.api.providers import AnthropicClient, OllamaClient, OpenAIClient
 from konsilisyum.core.memory import MemoryManager
 from konsilisyum.core.models import (
-    APIKey,
     Agent,
+    APIKey,
     Message,
     Session,
     SpeakerType,
@@ -21,7 +21,6 @@ from konsilisyum.core.models import (
 )
 from konsilisyum.core.orchestrator import Orchestrator
 from konsilisyum.core.session import SessionManager
-
 
 MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions"
 OPENAI_URL = "https://api.openai.com/v1/chat/completions"
@@ -82,9 +81,7 @@ class TestMistralIntegration:
     @pytest.mark.asyncio
     @respx.mock
     async def test_rate_limit_handling(self):
-        respx.post(MISTRAL_URL).mock(
-            return_value=httpx.Response(429, headers={"retry-after": "1"})
-        )
+        respx.post(MISTRAL_URL).mock(return_value=httpx.Response(429, headers={"retry-after": "1"}))
         client = MistralClient(model="mistral-small-latest")
         with pytest.raises(RateLimitError) as exc_info:
             await client.complete("system", "user", "key")
@@ -149,10 +146,22 @@ class TestOrchestratorIntegration:
     @pytest.fixture
     def setup(self):
         agents = [
-            Agent(name="Atlas", role="Stratejist", goal="Test goal", blind_spot="Test",
-                  style="Test", trigger="Test"),
-            Agent(name="Mira", role="Etikci", goal="Test goal", blind_spot="Test",
-                  style="Test", trigger="Test"),
+            Agent(
+                name="Atlas",
+                role="Stratejist",
+                goal="Test goal",
+                blind_spot="Test",
+                style="Test",
+                trigger="Test",
+            ),
+            Agent(
+                name="Mira",
+                role="Etikci",
+                goal="Test goal",
+                blind_spot="Test",
+                style="Test",
+                trigger="Test",
+            ),
         ]
         session = Session(agents=agents)
         topic = Topic(content="Test topic")
@@ -226,6 +235,73 @@ class TestOrchestratorIntegration:
                 break
         assert session.current_turn >= 1
 
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_generate_decisions(self, setup):
+        orchestrator, session, memory = setup
+        msg = Message(
+            turn=1,
+            speaker="Atlas",
+            content="We should focus on security first",
+            speaker_type=SpeakerType.AGENT,
+            topic="Test topic",
+        )
+        memory.add_message(msg)
+        session.messages.append(msg)
+        respx.post(MISTRAL_URL).mock(
+            return_value=httpx.Response(200, json=mock_mistral_response("1. Focus on security"))
+        )
+        result = await orchestrator.generate_decisions()
+        assert result is not None
+        assert "security" in result
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_generate_actions(self, setup):
+        orchestrator, session, memory = setup
+        msg = Message(
+            turn=1,
+            speaker="Mira",
+            content="We must review the privacy policy",
+            speaker_type=SpeakerType.AGENT,
+            topic="Test topic",
+        )
+        memory.add_message(msg)
+        session.messages.append(msg)
+        respx.post(MISTRAL_URL).mock(
+            return_value=httpx.Response(200, json=mock_mistral_response("- Review privacy policy"))
+        )
+        result = await orchestrator.generate_actions()
+        assert result is not None
+        assert "privacy" in result
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_generate_map(self, setup):
+        orchestrator, session, memory = setup
+        msg = Message(
+            turn=1,
+            speaker="Kaan",
+            content="I disagree with the timeline",
+            speaker_type=SpeakerType.AGENT,
+            topic="Test topic",
+        )
+        memory.add_message(msg)
+        session.messages.append(msg)
+        respx.post(MISTRAL_URL).mock(
+            return_value=httpx.Response(
+                200, json=mock_mistral_response("Atlas: pro timeline; Mira: against")
+            )
+        )
+        result = await orchestrator.generate_map()
+        assert result is not None
+
+    @pytest.mark.asyncio
+    async def test_generate_decisions_empty_history(self, setup):
+        orchestrator, session, memory = setup
+        result = await orchestrator.generate_decisions()
+        assert result is None
+
 
 class TestSessionManagerIntegration:
     @pytest.fixture
@@ -233,15 +309,21 @@ class TestSessionManagerIntegration:
         return str(tmp_path / "sessions")
 
     def test_save_and_load(self, tmp_sessions_dir):
-        agents = [Agent(name="Atlas", role="Stratejist", goal="G", blind_spot="B",
-                        style="S", trigger="T")]
+        agents = [
+            Agent(name="Atlas", role="Stratejist", goal="G", blind_spot="B", style="S", trigger="T")
+        ]
         topic = Topic(content="Test topic")
         session = Session(agents=agents, current_topic=topic)
         session.topics.append(topic)
-        session.messages.append(Message(
-            turn=1, speaker="Atlas", content="Test message",
-            speaker_type=SpeakerType.AGENT, topic="Test topic",
-        ))
+        session.messages.append(
+            Message(
+                turn=1,
+                speaker="Atlas",
+                content="Test message",
+                speaker_type=SpeakerType.AGENT,
+                topic="Test topic",
+            )
+        )
 
         manager = SessionManager(tmp_sessions_dir)
         manager.save(session)
@@ -270,10 +352,15 @@ class TestSessionManagerIntegration:
         topic = Topic(content="Test topic")
         session.current_topic = topic
         session.topics.append(topic)
-        session.messages.append(Message(
-            turn=1, speaker="Atlas", content="Test content",
-            speaker_type=SpeakerType.AGENT, topic="Test topic",
-        ))
+        session.messages.append(
+            Message(
+                turn=1,
+                speaker="Atlas",
+                content="Test content",
+                speaker_type=SpeakerType.AGENT,
+                topic="Test topic",
+            )
+        )
 
         md = manager.export(session, "md")
         assert "Test Session" in md
@@ -286,10 +373,15 @@ class TestSessionManagerIntegration:
         topic = Topic(content="Topic")
         session.current_topic = topic
         session.topics.append(topic)
-        session.messages.append(Message(
-            turn=1, speaker="Atlas", content="Content",
-            speaker_type=SpeakerType.AGENT, topic="Topic",
-        ))
+        session.messages.append(
+            Message(
+                turn=1,
+                speaker="Atlas",
+                content="Content",
+                speaker_type=SpeakerType.AGENT,
+                topic="Topic",
+            )
+        )
 
         jsonl = manager.export(session, "jsonl")
         lines = jsonl.strip().split("\n")
