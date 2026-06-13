@@ -30,3 +30,7 @@ Thumbs.db
 htmlcov/
 site/
 .venv/
+web/node_modules/
+web/.next/
+.superpowers/
+.opencode/

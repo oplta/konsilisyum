@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+body {
+  @apply bg-navy-900 text-parchment font-sans;
+}
+
+@layer components {
+  .gold-border {
+    @apply border border-gold/30;
+  }
+
+  .gold-divider {
+    @apply h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent;
+  }
+
+  .message-card {
+    @apply relative pl-4 py-3 px-4 bg-navy-800/50 rounded-r-lg;
+  }
+
+  .agent-card {
+    @apply bg-navy-800 gold-border rounded-lg px-4 py-3 text-center;
+  }
+
+  .btn-gold {
+    @apply bg-gold/10 text-gold border border-gold/30 rounded-md px-4 py-2
+           hover:bg-gold/20 transition-colors font-serif text-sm;
+  }
+
+  .btn-gold-active {
+    @apply bg-gold/30 text-gold border border-gold rounded-md px-4 py-2
+           font-serif text-sm;
+  }
+
+  .input-classic {
+    @apply bg-navy-800 border border-gold/20 rounded-md px-4 py-3
+           text-parchment placeholder-parchment/40
+           focus:outline-none focus:border-gold/50
+           font-serif;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a2e;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c9a96e33;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #c9a96e66;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-in-from-bottom {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slide-in-from-top {
+  from { transform: translateY(-8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+.fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+.slide-in-from-bottom-2 {
+  animation: slide-in-from-bottom 0.3s ease-out;
+}
+
+.slide-in-from-top-2 {
+  animation: slide-in-from-top 0.3s ease-out;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c9a96e33 #1a1a2e;
+}
