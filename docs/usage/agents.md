@@ -26,7 +26,7 @@ class Agent:
 
 ## Varsayılan Ajanlar
 
-İlk açılışta üç varsayılan ajan yüklenir:
+İlk açılışta beş varsayılan ajan yüklenir:
 
 ### Atlas — Stratejist
 - **Hedef:** Fikirleri uygulanabilir eylem planına çevirmek
@@ -46,6 +46,18 @@ class Agent:
 - **Üslup:** Kuru, ironi yok, düz
 - **Tetikleyici:** Sayı yoksa veya "herkes bilir" deniyorsa
 
+### Nova — İnovasyon Uzmanı
+- **Hedef:** Yaratıcı çözümler ve geleceğe dönük teknolojiler önermek
+- **Kör nokta:** Pratik zorlukları ve mevcut altyapı kısıtlamalarını göz ardı etme
+- **Üslup:** Heyecanlı, vizyoner, metaforlarla dolu
+- **Tetikleyici:** Geleneksel yaklaşımlar görünce alternatifler sunar
+
+### Zeynep — Sosyolog
+- **Hedef:** Toplumsal etkileri, kültürel dinamikleri ve kolektif davranışları analiz etmek
+- **Kör nokta:** Bireysel ajansı ve kişisel tercihleri hafife alma
+- **Üslup:** Akademik ama erişilebilir, örneklerle zengin
+- **Tetikleyici:** Teknoloji-toplum etkileşimi tartışılınca devreye girer
+
 ## Komutlar
 
 ### Ajan Listele
@@ -55,30 +67,18 @@ class Agent:
 ```
 
 ```
-ID  NAME   ROLE          STATUS    TURNS
-1   Atlas  Stratejist    active    14
-2   Mira   Etikçi        active    11
-3   Kaan   Şüpheci       muted     7
+ID  NAME    ROLE              STATUS    TURNS
+1   Atlas   Stratejist        active    14
+2   Mira    Etikçi            active    11
+3   Kaan    Şüpheci           active    7
+4   Nova    İnovasyon Uzmanı  active    5
+5   Zeynep  Sosyolog          active    3
 ```
 
 ### Ajan Ekle
 
 ```
-/add-agent
-```
-
-İnteraktif sihirbaz açılır:
-
-```
-Ajan adı: Nova
-Rolü: Veri bilimci
-Amacı: Veri odaklı karar vermek
-Kör noktası: Örneklem büyüklüğünü küçümser
-Üslubu: Sayısal, grafik referanslı
-Tetikleyici: İddia atılınca kanıt ister
-Renk (#ff6b6b): #4ecdc4
-Aktif? [Y/n]: y
-✓ Ajan eklendi: Nova (id: 4)
+/spawn Nova İnovasyon Uzmanı Yaratıcı çözümler önermek
 ```
 
 ### Ajan Susturma
@@ -86,25 +86,23 @@ Aktif? [Y/n]: y
 Bir ajanın konuşmasını geçici olarak kapat:
 
 ```
-/mute 2
-# Mira artık konuşmaz
+/mute Kaan
 ```
 
 Tekrar aktif et:
 
 ```
-/unmute 2
+/unmute Kaan
 ```
 
 ### Ajan Sil
 
 ```
-/remove 3
-# Kaan meclisten çıkar
+/kick Kaan
 ```
 
 !!! warning "Kalıcı"
-    `/remove` ajanı tamamen siler. Tekrar lazım olursa yeniden eklemelisin.
+    `/kick` ajanı meclisten çıkarır. Tekrar lazım olursa `/spawn` ile eklemelisin.
 
 ## Ajan Kişiliği Tasarlama
 
@@ -168,5 +166,5 @@ Bu sayede persona erimesi önlenir: 50 tur sonra bile ajan kendi geçmişini bil
 
 ## Sonraki Adım
 
-- [Komutlar](commands.md) — `/add-agent` dışındaki tüm komutlar
+- [Komutlar](commands.md) — tüm komutlar
 - [Mimari: Hafıza](../architecture/memory.md) — hafıza katmanının detayları
