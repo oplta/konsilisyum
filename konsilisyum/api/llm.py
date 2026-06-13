@@ -72,7 +72,7 @@ class BaseLLMClient(LLMClient):
         model: str,
         max_tokens: int = 4096,
         temperature: float = 0.7,
-        timeout: float = 30.0,
+        timeout: float = 120.0,
     ):
         self._model = model
         self.max_tokens = max_tokens

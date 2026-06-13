@@ -44,3 +44,11 @@ export async function getSession(id: string): Promise<CreateSessionResponse> {
   if (!res.ok) throw new Error('Oturum bulunamadı')
   return res.json()
 }
+
+export async function deleteSession(id: string): Promise<void> {
+  await fetch(`${API_BASE}/api/sessions/${id}`, { method: 'DELETE' })
+}
+
+export async function clearAllSessions(): Promise<void> {
+  await fetch(`${API_BASE}/api/sessions`, { method: 'DELETE' })
+}

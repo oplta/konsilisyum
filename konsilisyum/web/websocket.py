@@ -13,6 +13,9 @@ ws_router = APIRouter()
 async def session_websocket(websocket: WebSocket, session_id: str):
     bootstrapper = get_bootstrapper(session_id)
     if not bootstrapper:
+        from konsilisyum.web.routes import _register_session
+        bootstrapper = _register_session(session_id)
+    if not bootstrapper:
         await websocket.close(code=4004, reason="Oturum bulunamadi")
         return
 
@@ -67,6 +70,8 @@ async def session_websocket(websocket: WebSocket, session_id: str):
 
 
 async def _run_council(websocket: WebSocket, orchestrator, session):
+    import sys
+    print(f"[WS] council_basladı session={session.id}", flush=True, file=sys.stderr)
     try:
         while session.status != SessionStatus.ENDED:
             if session.status == SessionStatus.PAUSED:
@@ -74,19 +79,28 @@ async def _run_council(websocket: WebSocket, orchestrator, session):
                 continue
 
             if not session.active_agents:
+                print("[WS] aktif_ajan_yok", flush=True, file=sys.stderr)
                 await websocket.send_json({"type": "error", "message": "Aktif ajan yok"})
                 orchestrator.pause()
                 continue
 
             try:
                 next_agent = orchestrator.select_speaker()
+                print(f"[WS] konuşmacı_seçildi agent={next_agent.name}", flush=True, file=sys.stderr)
                 await websocket.send_json({"type": "agent_typing", "agent": next_agent.name})
 
                 result = await orchestrator.execute_turn()
+                print(f"[WS] tur tamamlandı agent={next_agent.name} error={result.error} is_pas={result.is_pas}", flush=True, file=sys.stderr)
 
                 await websocket.send_json({"type": "agent_done_typing", "agent": next_agent.name})
             except Exception as e:
-                await websocket.send_json({"type": "error", "message": str(e)})
+                print(f"[WS] tur_hatası: {e}", flush=True, file=sys.stderr)
+                import traceback
+                traceback.print_exc(file=sys.stderr)
+                try:
+                    await websocket.send_json({"type": "error", "message": str(e)})
+                except Exception:
+                    pass
                 continue
 
             if result.error == "max_auto_turns":

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createSession, listSessions, type SessionListItem } from '@/lib/api'
+import { createSession, listSessions, clearAllSessions, type SessionListItem } from '@/lib/api'
 
 const suggestedTopics = [
   'Yapay zeka eğitimi geleceği nasıl şekillendirir?',
@@ -115,9 +115,22 @@ export default function HomePage() {
         {sessions.length > 0 && (
           <div className="mt-16 slide-up stagger-3">
             <div className="gold-divider mb-8" />
-            <h2 className="font-display text-sm text-parchment/50 uppercase tracking-widest mb-4 text-center">
-              Geçmiş Oturumlar
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-sm text-parchment/50 uppercase tracking-widest">
+                Geçmiş Oturumlar
+              </h2>
+              <button
+                onClick={async () => {
+                  if (confirm('Tüm geçmiş sohbetler silinecek. Emin misiniz?')) {
+                    await clearAllSessions()
+                    setSessions([])
+                  }
+                }}
+                className="text-xs text-red-400/50 hover:text-red-400 transition-colors font-body"
+              >
+                Tümünü Temizle
+              </button>
+            </div>
             <div className="space-y-2">
               {sessions.slice(0, 5).map((s, i) => (
                 <div
